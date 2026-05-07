@@ -23,8 +23,17 @@ internal static class TryMapEmitter
 
         foreach (var m in match.Mappings)
         {
-            var conv = ConversionResolver.Resolve(m.SourceType, m.TargetType, comp);
-            var expr = ConversionResolver.Apply(conv, "src." + m.SourcePropertyName, m.TargetType);
+            string expr;
+            if (m.IsFlattened)
+            {
+                var op = MapEmitter.FlatteningOperator(m);
+                expr = "src." + m.SourcePropertyName.Replace(".", op);
+            }
+            else
+            {
+                var conv = ConversionResolver.Resolve(m.SourceType, m.TargetType, comp);
+                expr = ConversionResolver.Apply(conv, "src." + m.SourcePropertyName, m.TargetType);
+            }
             sb.Append("                ").Append(m.TargetParamName).Append(": ").Append(expr);
             if (++idx < totalArgs) sb.Append(',');
             sb.Append('\n');

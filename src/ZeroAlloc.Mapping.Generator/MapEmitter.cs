@@ -69,6 +69,12 @@ internal static class MapEmitter
 
     private static string ResolveExpression(PropertyMapping m, MapperClass owningClass, Compilation comp)
     {
+        if (m.IsFlattened)
+        {
+            var op = FlatteningOperator(m);
+            return "src." + m.SourcePropertyName.Replace(".", op);
+        }
+
         var srcExpr = "src." + m.SourcePropertyName;
 
         // Collection?
@@ -95,6 +101,9 @@ internal static class MapEmitter
         var conv = ConversionResolver.Resolve(m.SourceType, m.TargetType, comp);
         return ConversionResolver.Apply(conv, srcExpr, m.TargetType);
     }
+
+    internal static string FlatteningOperator(PropertyMapping m) =>
+        m.TargetType.NullableAnnotation == NullableAnnotation.Annotated ? "?." : "!.";
 
     private static string MakeCollectionExpression(string srcExpr, ITypeSymbol srcElem, ITypeSymbol dstElem, string dstFqn, string kind)
     {

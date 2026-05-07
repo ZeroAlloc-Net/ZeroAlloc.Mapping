@@ -4,9 +4,10 @@ namespace ZeroAlloc.Mapping.Generator;
 
 internal sealed record PropertyMapping(
     string TargetParamName,
-    string SourcePropertyName,
-    ITypeSymbol SourceType,
-    ITypeSymbol TargetType);
+    string SourcePropertyName,           // dot-separated for flattening, single name otherwise
+    ITypeSymbol SourceType,              // type of the leaf property
+    ITypeSymbol TargetType,
+    bool IsFlattened = false);
 
 internal sealed record ConstantMapping(
     string TargetParamName,
@@ -92,6 +93,24 @@ internal static class PropertyMatcher
             }
 
             var sourceName = renames.TryGetValue(p.Name, out var rename) ? rename : p.Name;
+
+            if (sourceName.Contains('.'))
+            {
+                var (leaf, leafType) = WalkDottedPath(source, sourceName);
+                if (leaf is null || leafType is null)
+                {
+                    unmatched.Add(p.Name);
+                    continue;
+                }
+                mappings.Add(new PropertyMapping(
+                    TargetParamName: p.Name,
+                    SourcePropertyName: sourceName,
+                    SourceType: leafType,
+                    TargetType: p.Type,
+                    IsFlattened: true));
+                continue;
+            }
+
             if (sourceProps.TryGetValue(sourceName, out var srcProp))
             {
                 mappings.Add(new PropertyMapping(
@@ -107,6 +126,21 @@ internal static class PropertyMatcher
         }
 
         return new MatchResult(ctor, mappings, constMappings, unmatched);
+    }
+
+    private static (IPropertySymbol? Leaf, ITypeSymbol? LeafType) WalkDottedPath(INamedTypeSymbol root, string dottedPath)
+    {
+        INamedTypeSymbol? cursor = root;
+        IPropertySymbol? leaf = null;
+        foreach (var segment in dottedPath.Split('.'))
+        {
+            if (cursor is null) return (null, null);
+            leaf = cursor.GetMembers(segment).OfType<IPropertySymbol>()
+                .FirstOrDefault(p => p.DeclaredAccessibility == Accessibility.Public);
+            if (leaf is null) return (null, null);
+            cursor = leaf.Type as INamedTypeSymbol;
+        }
+        return (leaf, leaf?.Type);
     }
 
     private static IMethodSymbol? PickConstructor(INamedTypeSymbol type)

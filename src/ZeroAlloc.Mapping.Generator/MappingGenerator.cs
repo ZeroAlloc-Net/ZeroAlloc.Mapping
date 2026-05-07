@@ -167,11 +167,32 @@ public sealed class MappingGenerator : IIncrementalGenerator
                     {
                         var srcName = attr.ConstructorArguments[0].Value as string;
                         var dstName = attr.ConstructorArguments[1].Value as string;
-                        if (srcName is not null && !sourceProps.Contains(srcName))
+                        if (srcName is not null)
                         {
-                            spc.ReportDiagnostic(Diagnostic.Create(
-                                Diagnostics.ZAMP005_MapPropertyTargetMissing,
-                                decl.Location, srcName, src.ToDisplayString()));
+                            if (srcName.Contains('.'))
+                            {
+                                INamedTypeSymbol? cursor = src;
+                                foreach (var segment in srcName.Split('.'))
+                                {
+                                    if (cursor is null) break;
+                                    var found = cursor.GetMembers(segment).OfType<IPropertySymbol>()
+                                        .FirstOrDefault(p => p.DeclaredAccessibility == Accessibility.Public);
+                                    if (found is null)
+                                    {
+                                        spc.ReportDiagnostic(Diagnostic.Create(
+                                            Diagnostics.ZAMP005_MapPropertyTargetMissing,
+                                            decl.Location, segment, cursor.ToDisplayString()));
+                                        break;
+                                    }
+                                    cursor = found.Type as INamedTypeSymbol;
+                                }
+                            }
+                            else if (!sourceProps.Contains(srcName))
+                            {
+                                spc.ReportDiagnostic(Diagnostic.Create(
+                                    Diagnostics.ZAMP005_MapPropertyTargetMissing,
+                                    decl.Location, srcName, src.ToDisplayString()));
+                            }
                         }
                         if (dstName is not null && !ctorParams.Contains(dstName))
                         {
