@@ -28,14 +28,14 @@ internal static class MapEmitter
             var match = PropertyMatcher.Match(src, dst, decl.UserPartialMethod);
             if (match is null) continue;
 
-            EmitMapMethod(sb, decl, match, comp);
+            EmitMapMethod(sb, decl, match, cls, comp);
         }
 
         sb.Append("}\n");
         return sb.ToString();
     }
 
-    private static void EmitMapMethod(StringBuilder sb, MappingDecl decl, MatchResult match, Compilation comp)
+    private static void EmitMapMethod(StringBuilder sb, MappingDecl decl, MatchResult match, MapperClass owningClass, Compilation comp)
     {
         var partialKw = decl.UserPartialMethod is not null ? "partial " : "";
         sb.Append("    public static ").Append(partialKw).Append(decl.DestinationTypeFqn).Append(" Map(")
@@ -48,8 +48,7 @@ internal static class MapEmitter
 
         foreach (var m in match.Mappings)
         {
-            var conv = ConversionResolver.Resolve(m.SourceType, m.TargetType, comp);
-            var expr = ConversionResolver.Apply(conv, "src." + m.SourcePropertyName, m.TargetType);
+            var expr = ResolveExpression(m, owningClass, comp);
             sb.Append("            ").Append(m.TargetParamName).Append(": ").Append(expr);
             if (++idx < totalArgs) sb.Append(',');
             sb.Append('\n');
@@ -63,6 +62,45 @@ internal static class MapEmitter
         }
 
         sb.Append("        );\n    }\n");
+    }
+
+    private static string ResolveExpression(PropertyMapping m, MapperClass owningClass, Compilation comp)
+    {
+        var srcExpr = "src." + m.SourcePropertyName;
+
+        // Collection?
+        var srcColl = NestedMappingResolver.AsCollection(m.SourceType);
+        var dstColl = NestedMappingResolver.AsCollection(m.TargetType);
+        if (srcColl is not null && dstColl is not null)
+        {
+            var nested = NestedMappingResolver.FindNestedMapper(owningClass, srcColl.Value.Element, dstColl.Value.Element);
+            if (nested is not null)
+            {
+                var dstFqn = m.TargetType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+                return MakeCollectionExpression(srcExpr, srcColl.Value.Element, dstColl.Value.Element, dstFqn, dstColl.Value.CollectionKind);
+            }
+        }
+
+        // Nested object via declared mapper?
+        var nestedObj = NestedMappingResolver.FindNestedMapper(owningClass, m.SourceType, m.TargetType);
+        if (nestedObj is not null)
+        {
+            return "Map(" + srcExpr + ")";
+        }
+
+        // Standard conversion
+        var conv = ConversionResolver.Resolve(m.SourceType, m.TargetType, comp);
+        return ConversionResolver.Apply(conv, srcExpr, m.TargetType);
+    }
+
+    private static string MakeCollectionExpression(string srcExpr, ITypeSymbol srcElem, ITypeSymbol dstElem, string dstFqn, string kind)
+    {
+        var dstElemFqn = dstElem.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+        var listOfDst = "global::System.Collections.Generic.List<" + dstElemFqn + ">";
+        var loop = "(global::System.Linq.Enumerable.Select(" + srcExpr + ", static x => Map(x)))";
+        if (kind == "array")
+            return "global::System.Linq.Enumerable.ToArray" + loop;
+        return "global::System.Linq.Enumerable.ToList" + loop;
     }
 
     private static string FormatLiteral(object? value) => value switch
