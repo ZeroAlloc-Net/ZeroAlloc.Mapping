@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/ZeroAlloc.Mapping/ZeroAlloc.Mapping.csproj" />
+    <Project Path="src/ZeroAlloc.Mapping.Generator/ZeroAlloc.Mapping.Generator.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/ZeroAlloc.Mapping.Tests/ZeroAlloc.Mapping.Tests.csproj" />
+    <Project Path="tests/ZeroAlloc.Mapping.Generator.Tests/ZeroAlloc.Mapping.Generator.Tests.csproj" />
+  </Folder>
+  <Folder Name="/samples/">
+    <Project Path="samples/ZeroAlloc.Mapping.AotSmoke/ZeroAlloc.Mapping.AotSmoke.csproj" />
+  </Folder>
+</Solution>
