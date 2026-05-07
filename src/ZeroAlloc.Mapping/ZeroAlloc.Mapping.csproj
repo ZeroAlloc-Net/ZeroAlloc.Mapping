@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
+    <RootNamespace>ZeroAlloc.Mapping</RootNamespace>
+    <PackageId>ZeroAlloc.Mapping</PackageId>
+    <IsAotCompatible>true</IsAotCompatible>
+    <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
+    <EnableSingleFileAnalyzer>true</EnableSingleFileAnalyzer>
+    <WarningsAsErrors>$(WarningsAsErrors);IL2026;IL2067;IL2075;IL2091;IL3050;IL3051</WarningsAsErrors>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="ZeroAlloc.Results" Version="1.1.*" />
+    <!-- Re-enable in Task 9 once the generator project exists:
+    <ProjectReference Include="..\ZeroAlloc.Mapping.Generator\ZeroAlloc.Mapping.Generator.csproj"
+                      OutputItemType="Analyzer" ReferenceOutputAssembly="false" /> -->
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="ZeroAlloc.Mapping.Tests" />
+    <InternalsVisibleTo Include="ZeroAlloc.Mapping.Generator.Tests" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" Version="4.14.0">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+  <ItemGroup>
+    <AdditionalFiles Include="PublicAPI.Shipped.txt" />
+    <AdditionalFiles Include="PublicAPI.Unshipped.txt" />
+  </ItemGroup>
+</Project>
