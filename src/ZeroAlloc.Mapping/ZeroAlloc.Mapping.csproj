@@ -10,9 +10,10 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="ZeroAlloc.Results" Version="1.1.*" />
-    <!-- Re-enable in Task 9 once the generator project exists:
     <ProjectReference Include="..\ZeroAlloc.Mapping.Generator\ZeroAlloc.Mapping.Generator.csproj"
-                      OutputItemType="Analyzer" ReferenceOutputAssembly="false" /> -->
+                      OutputItemType="Analyzer"
+                      ReferenceOutputAssembly="false"
+                      PrivateAssets="all" />
   </ItemGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="ZeroAlloc.Mapping.Tests" />
@@ -28,4 +29,16 @@
     <AdditionalFiles Include="PublicAPI.Shipped.txt" />
     <AdditionalFiles Include="PublicAPI.Unshipped.txt" />
   </ItemGroup>
+  <!--
+    Bundle the source generator into the NuGet package so consumers get it by
+    referencing only ZeroAlloc.Mapping. Mirrors the pattern in ZeroAlloc.Cache.
+  -->
+  <Target Name="IncludeGeneratorInPackage" BeforeTargets="_GetPackageFiles">
+    <ItemGroup>
+      <None Include="$(MSBuildThisFileDirectory)..\ZeroAlloc.Mapping.Generator\bin\$(Configuration)\netstandard2.0\ZeroAlloc.Mapping.Generator.dll"
+            Pack="true"
+            PackagePath="analyzers/dotnet/cs"
+            Visible="false" />
+    </ItemGroup>
+  </Target>
 </Project>
