@@ -5,7 +5,7 @@ namespace ZeroAlloc.Mapping.Generator;
 
 internal static class TryMapEmitter
 {
-    public static void EmitTryMapMethod(StringBuilder sb, MappingDecl decl, MatchResult match, MapperClass owningClass, Compilation comp)
+    public static void EmitTryMapMethod(StringBuilder sb, MappingDecl decl, MatchResult match, MapperClass owningClass, Compilation comp, ITypeSymbol srcType, ITypeSymbol dstType)
     {
         var partialKw = decl.UserPartialMethod is not null ? "partial " : "";
         var resultType = "global::ZeroAlloc.Results.Result<" + decl.DestinationTypeFqn + ", global::ZeroAlloc.Mapping.MappingError>";
@@ -16,7 +16,7 @@ internal static class TryMapEmitter
           .Append(".Failure(new global::ZeroAlloc.Mapping.MappingError(\"mapping.source.null\", \"(root)\"));\n");
         sb.Append("        try\n        {\n");
 
-        foreach (var hook in MapEmitter.MatchingHooks(owningClass, isAfter: false))
+        foreach (var hook in MapEmitter.MatchingHooks(owningClass, isAfter: false, srcType, dstType))
             sb.Append("            ").Append(hook.MethodName).Append("(src);\n");
 
         sb.Append("            var __dst = new ").Append(decl.DestinationTypeFqn).Append("(\n");
@@ -51,7 +51,7 @@ internal static class TryMapEmitter
 
         sb.Append("            );\n");
 
-        foreach (var hook in MapEmitter.MatchingHooks(owningClass, isAfter: true))
+        foreach (var hook in MapEmitter.MatchingHooks(owningClass, isAfter: true, srcType, dstType))
             sb.Append("            ").Append(hook.MethodName).Append("(src, __dst);\n");
 
         sb.Append("            return ").Append(resultType).Append(".Success(__dst);\n");

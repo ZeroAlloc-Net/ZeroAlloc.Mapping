@@ -29,23 +29,23 @@ internal static class MapEmitter
             if (match is null) continue;
 
             if (decl.Kind == MappingKind.TryMap)
-                TryMapEmitter.EmitTryMapMethod(sb, decl, match, cls, comp);
+                TryMapEmitter.EmitTryMapMethod(sb, decl, match, cls, comp, src, dst);
             else
-                EmitMapMethod(sb, decl, match, cls, comp);
+                EmitMapMethod(sb, decl, match, cls, comp, src, dst);
         }
 
         sb.Append("}\n");
         return sb.ToString();
     }
 
-    private static void EmitMapMethod(StringBuilder sb, MappingDecl decl, MatchResult match, MapperClass owningClass, Compilation comp)
+    private static void EmitMapMethod(StringBuilder sb, MappingDecl decl, MatchResult match, MapperClass owningClass, Compilation comp, ITypeSymbol srcType, ITypeSymbol dstType)
     {
         var partialKw = decl.UserPartialMethod is not null ? "partial " : "";
         sb.Append("    public static ").Append(partialKw).Append(decl.DestinationTypeFqn).Append(" Map(")
           .Append(decl.SourceTypeFqn).Append(" src)\n    {\n");
         sb.Append("        global::System.ArgumentNullException.ThrowIfNull(src);\n");
 
-        foreach (var hook in MatchingHooks(owningClass, isAfter: false))
+        foreach (var hook in MatchingHooks(owningClass, isAfter: false, srcType, dstType))
             sb.Append("        ").Append(hook.MethodName).Append("(src);\n");
 
         sb.Append("        var __dst = new ").Append(decl.DestinationTypeFqn).Append("(\n");
@@ -70,13 +70,13 @@ internal static class MapEmitter
 
         sb.Append("        );\n");
 
-        foreach (var hook in MatchingHooks(owningClass, isAfter: true))
+        foreach (var hook in MatchingHooks(owningClass, isAfter: true, srcType, dstType))
             sb.Append("        ").Append(hook.MethodName).Append("(src, __dst);\n");
 
         sb.Append("        return __dst;\n    }\n");
     }
 
-    internal static System.Collections.Generic.IEnumerable<HookMethod> MatchingHooks(MapperClass cls, bool isAfter)
+    internal static System.Collections.Generic.IEnumerable<HookMethod> MatchingHooks(MapperClass cls, bool isAfter, ITypeSymbol srcType, ITypeSymbol dstType)
     {
         if (cls.Hooks is null) yield break;
         foreach (var h in cls.Hooks)
@@ -85,10 +85,13 @@ internal static class MapEmitter
             if (isAfter)
             {
                 if (h.ParamTypes.Length != 2) continue;
+                if (!SymbolEqualityComparer.Default.Equals(h.ParamTypes[0], srcType)) continue;
+                if (!SymbolEqualityComparer.Default.Equals(h.ParamTypes[1], dstType)) continue;
             }
             else
             {
                 if (h.ParamTypes.Length != 1) continue;
+                if (!SymbolEqualityComparer.Default.Equals(h.ParamTypes[0], srcType)) continue;
             }
             yield return h;
         }
