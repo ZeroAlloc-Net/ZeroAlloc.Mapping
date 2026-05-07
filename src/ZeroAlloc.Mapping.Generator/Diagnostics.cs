@@ -70,6 +70,14 @@ internal static class Diagnostics
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
 
+    public static readonly DiagnosticDescriptor ZAMP009_ReverseMapNotSymmetric = new(
+        id: "ZAMP009",
+        title: "[ReverseMap] is not safely reversible",
+        messageFormat: "[ReverseMap<{0}, {1}>] cannot be auto-reversed because the partial method declares '{2}', which is information-asymmetric — write two explicit [Map<,>]s instead",
+        category: Category,
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
     public static readonly DiagnosticDescriptor ZAMP010_UnconsumedSource = new(
         id: "ZAMP010",
         title: "Source property is not consumed under strict source mapping",

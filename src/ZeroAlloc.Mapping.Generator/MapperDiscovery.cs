@@ -6,12 +6,16 @@ internal static class MapperDiscovery
 {
     public const string MapAttributeFqn = "ZeroAlloc.Mapping.MapAttribute`2";
     public const string TryMapAttributeFqn = "ZeroAlloc.Mapping.TryMapAttribute`2";
+    public const string ReverseMapAttributeFqn = "ZeroAlloc.Mapping.ReverseMapAttribute`2";
+    public const string ReverseTryMapAttributeFqn = "ZeroAlloc.Mapping.ReverseTryMapAttribute`2";
 
     public static System.Collections.Generic.IEnumerable<MapperClass> Discover(Compilation comp)
     {
         var mapAttr = comp.GetTypeByMetadataName(MapAttributeFqn);
         var tryMapAttr = comp.GetTypeByMetadataName(TryMapAttributeFqn);
-        if (mapAttr is null && tryMapAttr is null) yield break;
+        var reverseMapAttr = comp.GetTypeByMetadataName(ReverseMapAttributeFqn);
+        var reverseTryMapAttr = comp.GetTypeByMetadataName(ReverseTryMapAttributeFqn);
+        if (mapAttr is null && tryMapAttr is null && reverseMapAttr is null && reverseTryMapAttr is null) yield break;
 
         foreach (var type in EnumerateTypes(comp.GlobalNamespace))
         {
@@ -22,6 +26,52 @@ internal static class MapperDiscovery
             {
                 var orig = attr.AttributeClass?.OriginalDefinition;
                 if (orig is null) continue;
+
+                if (reverseMapAttr is not null && SymbolEqualityComparer.Default.Equals(orig, reverseMapAttr))
+                {
+                    var reverseTypeArgs = attr.AttributeClass!.TypeArguments;
+                    if (reverseTypeArgs.Length != 2) continue;
+                    var fwdPartial = FindUserPartialMethod(type, MappingKind.Map, reverseTypeArgs[0], reverseTypeArgs[1]);
+                    var revPartial = FindUserPartialMethod(type, MappingKind.Map, reverseTypeArgs[1], reverseTypeArgs[0]);
+                    decls.Add(new MappingDecl(
+                        SourceTypeFqn: reverseTypeArgs[0].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
+                        DestinationTypeFqn: reverseTypeArgs[1].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
+                        Kind: MappingKind.Map,
+                        Location: type.Locations.FirstOrDefault() ?? Location.None,
+                        UserPartialMethod: fwdPartial,
+                        FromReverse: true));
+                    decls.Add(new MappingDecl(
+                        SourceTypeFqn: reverseTypeArgs[1].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
+                        DestinationTypeFqn: reverseTypeArgs[0].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
+                        Kind: MappingKind.Map,
+                        Location: type.Locations.FirstOrDefault() ?? Location.None,
+                        UserPartialMethod: revPartial,
+                        FromReverse: true));
+                    continue;
+                }
+                if (reverseTryMapAttr is not null && SymbolEqualityComparer.Default.Equals(orig, reverseTryMapAttr))
+                {
+                    var reverseTypeArgs = attr.AttributeClass!.TypeArguments;
+                    if (reverseTypeArgs.Length != 2) continue;
+                    var fwdPartial = FindUserPartialMethod(type, MappingKind.TryMap, reverseTypeArgs[0], reverseTypeArgs[1]);
+                    var revPartial = FindUserPartialMethod(type, MappingKind.TryMap, reverseTypeArgs[1], reverseTypeArgs[0]);
+                    decls.Add(new MappingDecl(
+                        SourceTypeFqn: reverseTypeArgs[0].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
+                        DestinationTypeFqn: reverseTypeArgs[1].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
+                        Kind: MappingKind.TryMap,
+                        Location: type.Locations.FirstOrDefault() ?? Location.None,
+                        UserPartialMethod: fwdPartial,
+                        FromReverse: true));
+                    decls.Add(new MappingDecl(
+                        SourceTypeFqn: reverseTypeArgs[1].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
+                        DestinationTypeFqn: reverseTypeArgs[0].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
+                        Kind: MappingKind.TryMap,
+                        Location: type.Locations.FirstOrDefault() ?? Location.None,
+                        UserPartialMethod: revPartial,
+                        FromReverse: true));
+                    continue;
+                }
+
                 MappingKind kind;
                 if (mapAttr is not null && SymbolEqualityComparer.Default.Equals(orig, mapAttr))
                     kind = MappingKind.Map;

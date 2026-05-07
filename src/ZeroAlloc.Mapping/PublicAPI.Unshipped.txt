@@ -3,6 +3,10 @@ ZeroAlloc.Mapping.MapAttribute<TSource, TDestination>
 ZeroAlloc.Mapping.MapAttribute<TSource, TDestination>.MapAttribute() -> void
 ZeroAlloc.Mapping.TryMapAttribute<TSource, TDestination>
 ZeroAlloc.Mapping.TryMapAttribute<TSource, TDestination>.TryMapAttribute() -> void
+ZeroAlloc.Mapping.ReverseMapAttribute<TSource, TDestination>
+ZeroAlloc.Mapping.ReverseMapAttribute<TSource, TDestination>.ReverseMapAttribute() -> void
+ZeroAlloc.Mapping.ReverseTryMapAttribute<TSource, TDestination>
+ZeroAlloc.Mapping.ReverseTryMapAttribute<TSource, TDestination>.ReverseTryMapAttribute() -> void
 ZeroAlloc.Mapping.MapPropertyAttribute
 ZeroAlloc.Mapping.MapPropertyAttribute.MapPropertyAttribute(string! sourceProperty, string! targetProperty) -> void
 ZeroAlloc.Mapping.MapPropertyAttribute.SourceProperty.get -> string!

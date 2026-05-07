@@ -28,7 +28,9 @@ public sealed class MappingGenerator : IIncrementalGenerator
     {
         var mapAttr = comp.GetTypeByMetadataName(MapperDiscovery.MapAttributeFqn);
         var tryMapAttr = comp.GetTypeByMetadataName(MapperDiscovery.TryMapAttributeFqn);
-        if (mapAttr is null && tryMapAttr is null) return;
+        var reverseMapAttr = comp.GetTypeByMetadataName(MapperDiscovery.ReverseMapAttributeFqn);
+        var reverseTryMapAttr = comp.GetTypeByMetadataName(MapperDiscovery.ReverseTryMapAttributeFqn);
+        if (mapAttr is null && tryMapAttr is null && reverseMapAttr is null && reverseTryMapAttr is null) return;
 
         foreach (var type in EnumerateTypes(comp.GlobalNamespace))
         {
@@ -36,7 +38,9 @@ public sealed class MappingGenerator : IIncrementalGenerator
             {
                 var orig = a.AttributeClass?.OriginalDefinition;
                 return (mapAttr is not null && SymbolEqualityComparer.Default.Equals(orig, mapAttr))
-                    || (tryMapAttr is not null && SymbolEqualityComparer.Default.Equals(orig, tryMapAttr));
+                    || (tryMapAttr is not null && SymbolEqualityComparer.Default.Equals(orig, tryMapAttr))
+                    || (reverseMapAttr is not null && SymbolEqualityComparer.Default.Equals(orig, reverseMapAttr))
+                    || (reverseTryMapAttr is not null && SymbolEqualityComparer.Default.Equals(orig, reverseTryMapAttr));
             });
             if (!hasAny) continue;
 
@@ -61,6 +65,26 @@ public sealed class MappingGenerator : IIncrementalGenerator
             var src = comp.GetTypeByMetadataName(StripGlobal(decl.SourceTypeFqn));
             var dst = comp.GetTypeByMetadataName(StripGlobal(decl.DestinationTypeFqn));
             if (src is null || dst is null) continue;
+
+            // ZAMP009 — [ReverseMap]/[ReverseTryMap] desugared decls cannot be auto-reversed
+            // when the user-declared partial carries information-asymmetric customisations.
+            if (decl.FromReverse && decl.UserPartialMethod is not null)
+            {
+                foreach (var attr in decl.UserPartialMethod.GetAttributes())
+                {
+                    var name = attr.AttributeClass?.Name;
+                    if (name == "MapPropertyAttribute" || name == "MapValueAttribute" || name == "MapperIgnoreTargetAttribute")
+                    {
+                        spc.ReportDiagnostic(Diagnostic.Create(
+                            Diagnostics.ZAMP009_ReverseMapNotSymmetric,
+                            decl.Location,
+                            src.ToDisplayString(),
+                            dst.ToDisplayString(),
+                            "[" + name!.Replace("Attribute", "") + "]"));
+                        break;
+                    }
+                }
+            }
 
             var match = PropertyMatcher.Match(src, dst, decl.UserPartialMethod, cls.CaseInsensitive);
             if (match is null) continue;
