@@ -32,4 +32,20 @@ public class CaseInsensitiveTests
         var diags = TestHarness.RunDiagnostics(source);
         Assert.Contains(diags, d => d.Id == "ZAMP011");
     }
+
+    [Fact]
+    public void ZAMP011_DoesNotFire_When_ObsoleteSource_Collides()
+    {
+        var source = """
+            using System;
+            using ZeroAlloc.Mapping;
+            public sealed record Src(string Foo, [property: Obsolete] string foo);
+            public sealed record Dst(string FOO);
+            [Map<Src, Dst>]
+            [CaseInsensitiveMapping]
+            public static partial class M { }
+            """;
+        var diags = TestHarness.RunDiagnostics(source);
+        Assert.DoesNotContain(diags, d => d.Id == "ZAMP011");
+    }
 }

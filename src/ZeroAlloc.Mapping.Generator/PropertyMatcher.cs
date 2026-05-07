@@ -21,7 +21,7 @@ internal sealed record MatchResult(
 
 internal static class PropertyMatcher
 {
-    private static bool IsObsolete(ISymbol s) =>
+    internal static bool IsObsolete(ISymbol s) =>
         s.GetAttributes().Any(a =>
             a.AttributeClass is { Name: "ObsoleteAttribute" } ac &&
             ac.ContainingNamespace is { Name: "System", ContainingNamespace.IsGlobalNamespace: true });
