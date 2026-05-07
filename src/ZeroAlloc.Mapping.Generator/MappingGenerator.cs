@@ -62,8 +62,28 @@ public sealed class MappingGenerator : IIncrementalGenerator
             var dst = comp.GetTypeByMetadataName(StripGlobal(decl.DestinationTypeFqn));
             if (src is null || dst is null) continue;
 
-            var match = PropertyMatcher.Match(src, dst, decl.UserPartialMethod);
+            var match = PropertyMatcher.Match(src, dst, decl.UserPartialMethod, cls.CaseInsensitive);
             if (match is null) continue;
+
+            // ZAMP011 — under [CaseInsensitiveMapping], source has two properties whose names
+            // collide case-insensitively and the destination has a constructor param matching them.
+            if (cls.CaseInsensitive)
+            {
+                var grouped = src.GetMembers().OfType<IPropertySymbol>()
+                    .Where(p => p.DeclaredAccessibility == Accessibility.Public)
+                    .GroupBy(p => p.Name, System.StringComparer.OrdinalIgnoreCase)
+                    .Where(g => g.Count() > 1);
+                foreach (var group in grouped)
+                {
+                    if (match.Constructor.Parameters.Any(p => string.Equals(p.Name, group.Key, System.StringComparison.OrdinalIgnoreCase)))
+                    {
+                        spc.ReportDiagnostic(Diagnostic.Create(
+                            Diagnostics.ZAMP011_CaseInsensitiveAmbiguous,
+                            decl.Location,
+                            group.First().Name));
+                    }
+                }
+            }
 
             // ZAMP001 — unmatched required destination params (those without [MapValue] or source).
             foreach (var unmatched in match.UnmatchedTargetParams)

@@ -26,19 +26,29 @@ internal static class PropertyMatcher
             a.AttributeClass is { Name: "ObsoleteAttribute" } ac &&
             ac.ContainingNamespace is { Name: "System", ContainingNamespace.IsGlobalNamespace: true });
 
-    public static MatchResult? Match(INamedTypeSymbol source, INamedTypeSymbol destination, IMethodSymbol? userPartial = null)
+    public static MatchResult? Match(INamedTypeSymbol source, INamedTypeSymbol destination, IMethodSymbol? userPartial = null, bool caseInsensitive = false)
     {
         var ctor = PickConstructor(destination);
         if (ctor is null) return null;
 
-        var sourceProps = source.GetMembers().OfType<IPropertySymbol>()
-            .Where(p => p.DeclaredAccessibility == Accessibility.Public)
-            .Where(p => !IsObsolete(p))
-            .ToDictionary(p => p.Name, System.StringComparer.Ordinal);
+        var nameComparer = caseInsensitive ? System.StringComparer.OrdinalIgnoreCase : System.StringComparer.Ordinal;
 
-        var destProps = destination.GetMembers().OfType<IPropertySymbol>()
-            .Where(p => p.DeclaredAccessibility == Accessibility.Public)
-            .ToDictionary(p => p.Name, System.StringComparer.Ordinal);
+        var sourceProps = new System.Collections.Generic.Dictionary<string, IPropertySymbol>(nameComparer);
+        foreach (var p in source.GetMembers().OfType<IPropertySymbol>())
+        {
+            if (p.DeclaredAccessibility != Accessibility.Public) continue;
+            if (IsObsolete(p)) continue;
+            // Last-writer-wins on duplicate (case-insensitive collision); ZAMP011 reports the
+            // ambiguity separately so the generator does not crash on otherwise-valid inputs.
+            sourceProps[p.Name] = p;
+        }
+
+        var destProps = new System.Collections.Generic.Dictionary<string, IPropertySymbol>(nameComparer);
+        foreach (var p in destination.GetMembers().OfType<IPropertySymbol>())
+        {
+            if (p.DeclaredAccessibility != Accessibility.Public) continue;
+            destProps[p.Name] = p;
+        }
 
         var renames = new System.Collections.Generic.Dictionary<string, string>(System.StringComparer.Ordinal);
         var constants = new System.Collections.Generic.Dictionary<string, object?>(System.StringComparer.Ordinal);

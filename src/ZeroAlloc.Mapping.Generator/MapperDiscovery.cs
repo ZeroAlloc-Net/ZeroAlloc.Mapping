@@ -45,11 +45,16 @@ internal static class MapperDiscovery
 
             if (decls.Count == 0) continue;
 
+            var caseInsensitive = type.GetAttributes().Any(a =>
+                a.AttributeClass is { Name: "CaseInsensitiveMappingAttribute" } ac &&
+                ac.ContainingNamespace is { Name: "Mapping", ContainingNamespace.Name: "ZeroAlloc" });
+
             yield return new MapperClass(
                 Namespace: type.ContainingNamespace.IsGlobalNamespace
                     ? "" : type.ContainingNamespace.ToDisplayString(),
                 ClassName: type.Name,
-                Mappings: decls);
+                Mappings: decls,
+                CaseInsensitive: caseInsensitive);
         }
     }
 

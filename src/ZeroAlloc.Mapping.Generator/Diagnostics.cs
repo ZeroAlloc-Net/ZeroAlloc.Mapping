@@ -69,4 +69,12 @@ internal static class Diagnostics
         category: Category,
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
+
+    public static readonly DiagnosticDescriptor ZAMP011_CaseInsensitiveAmbiguous = new(
+        id: "ZAMP011",
+        title: "Case-insensitive matching produces ambiguous source",
+        messageFormat: "Under [CaseInsensitiveMapping], two source properties collide on destination param '{0}' — disambiguate via [MapperIgnoreSource] or [MapProperty]",
+        category: Category,
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
 }

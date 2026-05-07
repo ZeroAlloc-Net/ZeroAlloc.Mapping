@@ -25,7 +25,7 @@ internal static class MapEmitter
                       ?? FindType(comp, decl.DestinationTypeFqn);
             if (src is null || dst is null) continue;
 
-            var match = PropertyMatcher.Match(src, dst, decl.UserPartialMethod);
+            var match = PropertyMatcher.Match(src, dst, decl.UserPartialMethod, cls.CaseInsensitive);
             if (match is null) continue;
 
             if (decl.Kind == MappingKind.TryMap)

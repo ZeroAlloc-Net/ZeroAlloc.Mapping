@@ -9,7 +9,9 @@ internal enum MappingKind
 internal sealed record MapperClass(
     string Namespace,
     string ClassName,
-    System.Collections.Generic.IReadOnlyList<MappingDecl> Mappings);
+    System.Collections.Generic.IReadOnlyList<MappingDecl> Mappings,
+    bool CaseInsensitive = false,
+    bool StrictSource = false);
 
 internal sealed record MappingDecl(
     string SourceTypeFqn,
