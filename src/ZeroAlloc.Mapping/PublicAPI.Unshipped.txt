@@ -3,6 +3,18 @@ ZeroAlloc.Mapping.MapAttribute<TSource, TDestination>
 ZeroAlloc.Mapping.MapAttribute<TSource, TDestination>.MapAttribute() -> void
 ZeroAlloc.Mapping.TryMapAttribute<TSource, TDestination>
 ZeroAlloc.Mapping.TryMapAttribute<TSource, TDestination>.TryMapAttribute() -> void
+ZeroAlloc.Mapping.MapPropertyAttribute
+ZeroAlloc.Mapping.MapPropertyAttribute.MapPropertyAttribute(string! sourceProperty, string! targetProperty) -> void
+ZeroAlloc.Mapping.MapPropertyAttribute.SourceProperty.get -> string!
+ZeroAlloc.Mapping.MapPropertyAttribute.TargetProperty.get -> string!
+ZeroAlloc.Mapping.MapValueAttribute
+ZeroAlloc.Mapping.MapValueAttribute.MapValueAttribute(string! targetProperty, object! value) -> void
+ZeroAlloc.Mapping.MapValueAttribute.TargetProperty.get -> string!
+ZeroAlloc.Mapping.MapValueAttribute.Value.get -> object!
+ZeroAlloc.Mapping.MapperIgnoreSourceAttribute
+ZeroAlloc.Mapping.MapperIgnoreSourceAttribute.MapperIgnoreSourceAttribute() -> void
+ZeroAlloc.Mapping.MapperIgnoreTargetAttribute
+ZeroAlloc.Mapping.MapperIgnoreTargetAttribute.MapperIgnoreTargetAttribute() -> void
 ZeroAlloc.Mapping.MappingError
 ZeroAlloc.Mapping.MappingError.MappingError() -> void
 ZeroAlloc.Mapping.MappingError.MappingError(string! Code, string! PropertyPath, string? Reason = null, System.Collections.Generic.IReadOnlyList<ZeroAlloc.Mapping.MappingError>? Children = null) -> void
