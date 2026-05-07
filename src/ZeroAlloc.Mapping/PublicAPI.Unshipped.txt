@@ -1,1 +1,19 @@
 #nullable enable
+ZeroAlloc.Mapping.MappingError
+ZeroAlloc.Mapping.MappingError.MappingError() -> void
+ZeroAlloc.Mapping.MappingError.MappingError(string! Code, string! PropertyPath, string? Reason = null, System.Collections.Generic.IReadOnlyList<ZeroAlloc.Mapping.MappingError>? Children = null) -> void
+ZeroAlloc.Mapping.MappingError.Code.get -> string!
+ZeroAlloc.Mapping.MappingError.Code.init -> void
+ZeroAlloc.Mapping.MappingError.PropertyPath.get -> string!
+ZeroAlloc.Mapping.MappingError.PropertyPath.init -> void
+ZeroAlloc.Mapping.MappingError.Reason.get -> string?
+ZeroAlloc.Mapping.MappingError.Reason.init -> void
+ZeroAlloc.Mapping.MappingError.Children.get -> System.Collections.Generic.IReadOnlyList<ZeroAlloc.Mapping.MappingError>?
+ZeroAlloc.Mapping.MappingError.Children.init -> void
+ZeroAlloc.Mapping.MappingError.Deconstruct(out string! Code, out string! PropertyPath, out string? Reason, out System.Collections.Generic.IReadOnlyList<ZeroAlloc.Mapping.MappingError>? Children) -> void
+ZeroAlloc.Mapping.MappingError.Equals(ZeroAlloc.Mapping.MappingError other) -> bool
+~override ZeroAlloc.Mapping.MappingError.Equals(object obj) -> bool
+override ZeroAlloc.Mapping.MappingError.GetHashCode() -> int
+~override ZeroAlloc.Mapping.MappingError.ToString() -> string
+static ZeroAlloc.Mapping.MappingError.operator !=(ZeroAlloc.Mapping.MappingError left, ZeroAlloc.Mapping.MappingError right) -> bool
+static ZeroAlloc.Mapping.MappingError.operator ==(ZeroAlloc.Mapping.MappingError left, ZeroAlloc.Mapping.MappingError right) -> bool
