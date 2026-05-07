@@ -1,0 +1,78 @@
+name: CI
+
+on:
+  push:
+    branches: [main, 'release-please--**']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore tools
+        run: dotnet tool restore
+
+      - name: Run GitVersion
+        id: gitversion
+        run: |
+          VERSION=$(dotnet gitversion /showvariable SemVer)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Package version: $VERSION"
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --no-restore -c Release -p:Version=${{ steps.gitversion.outputs.version }}
+
+      - name: Test
+        run: dotnet test --no-build -c Release --verbosity normal
+
+      - name: Pack
+        run: |
+          dotnet pack src/ZeroAlloc.Mapping/ZeroAlloc.Mapping.csproj --no-build -c Release -p:PackageVersion=${{ steps.gitversion.outputs.version }} -o ./artifacts
+
+  aot-smoke:
+    runs-on: ubuntu-latest
+    # Publishes samples/ZeroAlloc.Mapping.AotSmoke with PublishAot=true and runs
+    # the binary. Exercises both [Map] and [TryMap] paths the generator emits.
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Install AOT native toolchain
+        run: sudo apt-get update && sudo apt-get install -y clang zlib1g-dev
+
+      - name: Restore
+        run: dotnet restore samples/ZeroAlloc.Mapping.AotSmoke/ZeroAlloc.Mapping.AotSmoke.csproj
+
+      - name: Publish AOT
+        run: dotnet publish samples/ZeroAlloc.Mapping.AotSmoke/ZeroAlloc.Mapping.AotSmoke.csproj -r linux-x64 -c Release -o ./aot-out
+
+      - name: Run AOT binary
+        run: ./aot-out/ZeroAlloc.Mapping.AotSmoke
+
+  api-compat:
+    uses: ZeroAlloc-Net/.github/.github/workflows/api-compat.yml@main
+    with:
+      package-id: ZeroAlloc.Mapping
+      csproj-path: src/ZeroAlloc.Mapping/ZeroAlloc.Mapping.csproj
