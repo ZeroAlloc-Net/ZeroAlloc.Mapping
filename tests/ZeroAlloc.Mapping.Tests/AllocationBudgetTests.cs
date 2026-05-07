@@ -21,7 +21,35 @@ public sealed record SignedUpUser(BudgetEmail Email);
 
 [Map<OrderRequest, Order>]
 [TryMap<SignUpRequest, SignedUpUser>]
-public static partial class BudgetMappings { }
+public static partial class BudgetMappings
+{
+    // No-op hooks — fire only on the [Map<OrderRequest, Order>] generated body.
+    // Empty bodies must not introduce per-call allocations.
+    [BeforeMap]
+    public static void NoopBefore(OrderRequest src) { }
+
+    [AfterMap]
+    public static void NoopAfter(OrderRequest src, Order dst) { }
+}
+
+// Sibling fixture: ReverseMap symmetry.
+public sealed record BudgetFwd(int X);
+public sealed record BudgetRev(int X);
+
+[ReverseMap<BudgetFwd, BudgetRev>]
+public static partial class BudgetReverseFixtures { }
+
+// Sibling fixture: dotted-path flatten.
+public sealed record BudgetInner(int Value);
+public sealed record BudgetOuter(BudgetInner Nested);
+public sealed record BudgetFlat(int Value);
+
+[Map<BudgetOuter, BudgetFlat>]
+public static partial class BudgetFlattenFixtures
+{
+    [MapProperty("Nested.Value", "Value")]
+    public static partial BudgetFlat Map(BudgetOuter src);
+}
 
 public class AllocationBudgetTests
 {
@@ -95,5 +123,28 @@ public class AllocationBudgetTests
     {
         var req = new SignUpRequest("a@b.com");
         AllocationGate.AssertBudget(120, 5000, () => _ = BudgetMappings.TryMap(req), "[TryMap] repeated happy");
+    }
+
+    // ---- 3 v1-extension feature budgets ----
+
+    [Fact]
+    public void Map_With_BeforeAfterHooks_WithinBudget()
+    {
+        var req = new OrderRequest(1, "n");
+        AllocationGate.AssertBudget(80, 1000, () => _ = BudgetMappings.Map(req), "[Map] with hooks");
+    }
+
+    [Fact]
+    public void Map_Reverse_WithinBudget()
+    {
+        var fwd = new BudgetFwd(7);
+        AllocationGate.AssertBudget(80, 1000, () => _ = BudgetReverseFixtures.Map(fwd), "[ReverseMap] forward");
+    }
+
+    [Fact]
+    public void Map_With_Flattening_WithinBudget()
+    {
+        var outer = new BudgetOuter(new BudgetInner(42));
+        AllocationGate.AssertBudget(80, 1000, () => _ = BudgetFlattenFixtures.Map(outer), "[MapProperty] flatten");
     }
 }

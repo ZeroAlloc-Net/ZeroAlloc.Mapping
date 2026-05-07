@@ -23,7 +23,35 @@ public sealed record User(Email Email);
 
 [Map<OrderRequest, Order>]
 [TryMap<SignUpRequest, User>]
-public static partial class Mappings { }
+public static partial class Mappings
+{
+    // No-op hooks — fire on every generated mapping where the source matches.
+    // Here only Mappings.Map(OrderRequest) → Order matches; TryMap source is SignUpRequest.
+    [BeforeMap]
+    public static void NoopBefore(OrderRequest src) { }
+
+    [AfterMap]
+    public static void NoopAfter(OrderRequest src, Order dst) { }
+}
+
+// Reverse-map fixture — emits both FwdDto→RevDto and RevDto→FwdDto.
+public sealed record FwdDto(int X);
+public sealed record RevDto(int X);
+
+[ReverseMap<FwdDto, RevDto>]
+public static partial class ReverseFixtures { }
+
+// Flatten fixture — dotted source path collapses Outer.Nested.Value → Flat.Value.
+public sealed record Inner(int Value);
+public sealed record Outer(Inner Nested);
+public sealed record Flat(int Value);
+
+[Map<Outer, Flat>]
+public static partial class FlattenFixtures
+{
+    [MapProperty("Nested.Value", "Value")]
+    public static partial Flat Map(Outer src);
+}
 
 public static class Program
 {
@@ -65,6 +93,19 @@ public static class Program
         if (failure.Error.Code != "mapping.constructor.threw")
             throw new InvalidOperationException(
                 $"[TryMap] deny path: unexpected error code '{failure.Error.Code}'");
+
+        // ReverseMap — exercise both directions.
+        var rev = ReverseFixtures.Map(new FwdDto(1));
+        if (rev.X != 1)
+            throw new InvalidOperationException("[ReverseMap] forward direction returned unexpected payload");
+        var fwd = ReverseFixtures.Map(new RevDto(2));
+        if (fwd.X != 2)
+            throw new InvalidOperationException("[ReverseMap] reverse direction returned unexpected payload");
+
+        // Flatten — dotted source path.
+        var flat = FlattenFixtures.Map(new Outer(new Inner(42)));
+        if (flat.Value != 42)
+            throw new InvalidOperationException("[MapProperty] flatten returned unexpected payload");
     }
 
     private static void ExerciseAllocationGates()
