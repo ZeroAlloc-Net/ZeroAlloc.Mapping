@@ -2,17 +2,11 @@
 
 Items deferred from v1.0.0. Each entry has a **Graduation signal** that, when met, promotes the item to a tracked issue. Until then, items live here as the canonical record of "considered, not yet built."
 
+> **Update 2026-05-07:** B1 (flattening), B4 (hooks), B10 (`[Obsolete]` skip),
+> B12 (`[ReverseMap]`), B13 (case-insensitive), B14 (strict source) graduated
+> into v1 — see [`plans/2026-05-07-mapping-v1-extensions-design.md`](plans/2026-05-07-mapping-v1-extensions-design.md).
+
 For v1 scope, see [`plans/2026-05-07-mapping-design.md`](plans/2026-05-07-mapping-design.md).
-
----
-
-## B1 — Flattening / unflattening
-
-**What.** Auto-flatten nested-source paths into flat-target properties (and vice versa). E.g. `A.Customer.Address.City → B.City` without an explicit `[MapProperty]` rename.
-
-**Why deferred.** Mapperly's most-used feature, but rare in Clean-architecture codebases — flat DTOs typically come from flat queries. Generator complexity is non-trivial: requires a path-walker that builds nested null-checks and a name-collision policy.
-
-**Graduation signal.** A user explicitly asks for it, OR a template (`za-clean` / CQRS-ES) needs it to ship.
 
 ---
 
@@ -33,16 +27,6 @@ For v1 scope, see [`plans/2026-05-07-mapping-design.md`](plans/2026-05-07-mappin
 **Why deferred.** `ZeroAlloc.Specification` already covers expression-tree construction; double coverage risks divergence.
 
 **Graduation signal.** EF Core users specifically ask AND `ZeroAlloc.Specification` doesn't already cover it.
-
----
-
-## B4 — `[BeforeMap]` / `[AfterMap]` hooks
-
-**What.** User-defined static methods invoked before/after the generated body to apply imperative side-effects (audit log, tracing).
-
-**Why deferred.** Imperative hooks invite mutation and make generated code harder to reason about. Caller-side wrapping covers the common cases.
-
-**Graduation signal.** Real audit/logging need that can't be done at the call site (e.g. multi-mapper telemetry that must be DRY).
 
 ---
 
@@ -96,16 +80,6 @@ For v1 scope, see [`plans/2026-05-07-mapping-design.md`](plans/2026-05-07-mappin
 
 ---
 
-## B10 — `IgnoreObsoleteMembersStrategy`
-
-**What.** Auto-skip `[Obsolete]` members during property matching.
-
-**Why deferred.** YAGNI. `[MapperIgnoreSource/Target]` covers the explicit-opt-out path.
-
-**Graduation signal.** A user asks.
-
----
-
 ## B11 — `UseDeepCloning` mode
 
 **What.** Default to deep-cloning collections and nested objects instead of shallow copy.
@@ -113,33 +87,3 @@ For v1 scope, see [`plans/2026-05-07-mapping-design.md`](plans/2026-05-07-mappin
 **Why deferred.** Niche — opaque deep-cloning makes generated code hard to audit. Shallow-by-default + explicit nested `[Map]` declarations is the family idiom.
 
 **Graduation signal.** Real consumer hits this.
-
----
-
-## B12 — Reverse mapping auto-generation — `[ReverseMap]`
-
-**What.** Class-level `[ReverseMap<TSrc, TDst>]` that emits both `Map(TSrc) → TDst` and `Map(TDst) → TSrc`.
-
-**Why deferred.** Reversing non-trivial mappings (those with `[MapValue]`, `[MapProperty]`, dropped properties) is rarely safe — easy to silently lose data.
-
-**Graduation signal.** Explicit ask for trivial-mapping reversal (DTO ↔ command for symmetric CRUD).
-
----
-
-## B13 — Case-insensitive property name matching
-
-**What.** Match `src.foo` to `dst.Foo` when names differ only by case.
-
-**Why deferred.** Compile-time ambiguity risk: `src.Foo` and `src.foo` both target `dst.Foo` would silently pick one.
-
-**Graduation signal.** Real domain has case-mismatched DTOs from external sources (PHP/JSON-snake-case integrations).
-
----
-
-## B14 — Required-mapping strictness modes (Mapperly's `RequiredMappingStrategy`)
-
-**What.** Per-mapping or global toggle for "all source properties must be consumed" vs "all destination required properties must be set".
-
-**Why deferred.** v1 always errors on missing required destination property; source-side ignores by default. Stricter source-side enforcement is the rare ask.
-
-**Graduation signal.** Stricter source-side enforcement requested.
