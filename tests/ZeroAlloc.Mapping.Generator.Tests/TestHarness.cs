@@ -1,5 +1,6 @@
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
+using ZeroAlloc.Mapping;
 
 namespace ZeroAlloc.Mapping.Generator.Tests;
 
@@ -37,7 +38,28 @@ internal static class TestHarness
     }
 
     private static IEnumerable<MetadataReference> ReferenceAssemblies()
-        => AppDomain.CurrentDomain.GetAssemblies()
+    {
+        var explicitTypes = new[]
+        {
+            typeof(MappingError),
+            typeof(MapAttribute<,>),
+            typeof(TryMapAttribute<,>),
+            typeof(MapPropertyAttribute),
+            typeof(MapValueAttribute),
+            typeof(MapperIgnoreSourceAttribute),
+            typeof(MapperIgnoreTargetAttribute),
+        };
+        var explicitLocations = explicitTypes
+            .Select(t => t.Assembly.Location)
+            .Where(l => !string.IsNullOrEmpty(l))
+            .Distinct(StringComparer.OrdinalIgnoreCase);
+
+        var domainLocations = AppDomain.CurrentDomain.GetAssemblies()
             .Where(a => !a.IsDynamic && !string.IsNullOrEmpty(a.Location))
-            .Select(a => MetadataReference.CreateFromFile(a.Location));
+            .Select(a => a.Location);
+
+        return explicitLocations.Concat(domainLocations)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Select(p => (MetadataReference)MetadataReference.CreateFromFile(p));
+    }
 }
