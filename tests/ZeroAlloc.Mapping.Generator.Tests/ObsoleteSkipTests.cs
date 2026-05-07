@@ -31,4 +31,19 @@ public class ObsoleteSkipTests
             """;
         return Verifier.Verify(TestHarness.RunGenerator(source)).UseDirectory("Snapshots");
     }
+
+    [Fact]
+    public void Obsolete_DestinationParam_DoesNotFire_ZAMP001()
+    {
+        var source = """
+            using System;
+            using ZeroAlloc.Mapping;
+            public sealed record Src(int A);
+            public sealed record Dst(int A, [property: Obsolete] string? OldField = null);
+            [Map<Src, Dst>]
+            public static partial class M { }
+            """;
+        var diags = TestHarness.RunDiagnostics(source);
+        Assert.DoesNotContain(diags, d => d.Id == "ZAMP001");
+    }
 }

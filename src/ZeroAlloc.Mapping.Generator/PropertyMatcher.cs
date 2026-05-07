@@ -23,7 +23,8 @@ internal static class PropertyMatcher
 {
     private static bool IsObsolete(ISymbol s) =>
         s.GetAttributes().Any(a =>
-            a.AttributeClass?.ToDisplayString() == "System.ObsoleteAttribute");
+            a.AttributeClass is { Name: "ObsoleteAttribute" } ac &&
+            ac.ContainingNamespace is { Name: "System", ContainingNamespace.IsGlobalNamespace: true });
 
     public static MatchResult? Match(INamedTypeSymbol source, INamedTypeSymbol destination, IMethodSymbol? userPartial = null)
     {
@@ -33,6 +34,10 @@ internal static class PropertyMatcher
         var sourceProps = source.GetMembers().OfType<IPropertySymbol>()
             .Where(p => p.DeclaredAccessibility == Accessibility.Public)
             .Where(p => !IsObsolete(p))
+            .ToDictionary(p => p.Name, System.StringComparer.Ordinal);
+
+        var destProps = destination.GetMembers().OfType<IPropertySymbol>()
+            .Where(p => p.DeclaredAccessibility == Accessibility.Public)
             .ToDictionary(p => p.Name, System.StringComparer.Ordinal);
 
         var renames = new System.Collections.Generic.Dictionary<string, string>(System.StringComparer.Ordinal);
@@ -65,7 +70,11 @@ internal static class PropertyMatcher
 
         foreach (var p in ctor.Parameters)
         {
-            if (IsObsolete(p)) continue;  // [Obsolete] dest param — silent skip, don't add to unmatched
+            // [Obsolete] dest param — silent skip, don't add to unmatched.
+            // Also check the matching destination property: for record positional params,
+            // [property: Obsolete] targets only the synthesized property, not the parameter.
+            if (IsObsolete(p)) continue;
+            if (destProps.TryGetValue(p.Name, out var destProp) && IsObsolete(destProp)) continue;
             if (constants.TryGetValue(p.Name, out var constValue))
             {
                 constMappings.Add(new ConstantMapping(p.Name, constValue, p.Type));
