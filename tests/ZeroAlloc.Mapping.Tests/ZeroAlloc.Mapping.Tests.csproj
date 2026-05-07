@@ -15,5 +15,12 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\ZeroAlloc.Mapping\ZeroAlloc.Mapping.csproj" />
+    <ProjectReference Include="..\..\src\ZeroAlloc.Mapping.Generator\ZeroAlloc.Mapping.Generator.csproj"
+                      OutputItemType="Analyzer"
+                      ReferenceOutputAssembly="false" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="..\..\samples\ZeroAlloc.Mapping.AotSmoke\Internal\AllocationGate.cs"
+             Link="Internal\AllocationGate.cs" />
   </ItemGroup>
 </Project>
