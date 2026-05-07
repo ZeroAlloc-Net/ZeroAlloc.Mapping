@@ -21,6 +21,10 @@ internal sealed record MatchResult(
 
 internal static class PropertyMatcher
 {
+    private static bool IsObsolete(ISymbol s) =>
+        s.GetAttributes().Any(a =>
+            a.AttributeClass?.ToDisplayString() == "System.ObsoleteAttribute");
+
     public static MatchResult? Match(INamedTypeSymbol source, INamedTypeSymbol destination, IMethodSymbol? userPartial = null)
     {
         var ctor = PickConstructor(destination);
@@ -28,6 +32,7 @@ internal static class PropertyMatcher
 
         var sourceProps = source.GetMembers().OfType<IPropertySymbol>()
             .Where(p => p.DeclaredAccessibility == Accessibility.Public)
+            .Where(p => !IsObsolete(p))
             .ToDictionary(p => p.Name, System.StringComparer.Ordinal);
 
         var renames = new System.Collections.Generic.Dictionary<string, string>(System.StringComparer.Ordinal);
@@ -60,6 +65,7 @@ internal static class PropertyMatcher
 
         foreach (var p in ctor.Parameters)
         {
+            if (IsObsolete(p)) continue;  // [Obsolete] dest param — silent skip, don't add to unmatched
             if (constants.TryGetValue(p.Name, out var constValue))
             {
                 constMappings.Add(new ConstantMapping(p.Name, constValue, p.Type));
