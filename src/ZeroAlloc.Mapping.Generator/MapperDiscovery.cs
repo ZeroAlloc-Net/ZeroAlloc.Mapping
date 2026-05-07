@@ -33,11 +33,14 @@ internal static class MapperDiscovery
                 var typeArgs = attr.AttributeClass!.TypeArguments;
                 if (typeArgs.Length != 2) continue;
 
+                var userPartial = FindUserPartialMethod(type, kind, typeArgs[0], typeArgs[1]);
+
                 decls.Add(new MappingDecl(
                     SourceTypeFqn: typeArgs[0].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
                     DestinationTypeFqn: typeArgs[1].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
                     Kind: kind,
-                    Location: type.Locations.FirstOrDefault() ?? Location.None));
+                    Location: type.Locations.FirstOrDefault() ?? Location.None,
+                    UserPartialMethod: userPartial));
             }
 
             if (decls.Count == 0) continue;
@@ -48,6 +51,20 @@ internal static class MapperDiscovery
                 ClassName: type.Name,
                 Mappings: decls);
         }
+    }
+
+    private static IMethodSymbol? FindUserPartialMethod(INamedTypeSymbol owner, MappingKind kind, ITypeSymbol src, ITypeSymbol dst)
+    {
+        var name = kind == MappingKind.Map ? "Map" : "TryMap";
+        foreach (var m in owner.GetMembers(name).OfType<IMethodSymbol>())
+        {
+            if (!m.IsStatic) continue;
+            if (m.Parameters.Length != 1) continue;
+            if (!SymbolEqualityComparer.Default.Equals(m.Parameters[0].Type, src)) continue;
+            if (kind == MappingKind.Map && !SymbolEqualityComparer.Default.Equals(m.ReturnType, dst)) continue;
+            return m;
+        }
+        return null;
     }
 
     private static bool IsStaticPartialClass(INamedTypeSymbol t) =>

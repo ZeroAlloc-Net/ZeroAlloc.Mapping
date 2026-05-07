@@ -25,7 +25,7 @@ internal static class MapEmitter
                       ?? FindType(comp, decl.DestinationTypeFqn);
             if (src is null || dst is null) continue;
 
-            var match = PropertyMatcher.Match(src, dst);
+            var match = PropertyMatcher.Match(src, dst, decl.UserPartialMethod);
             if (match is null) continue;
 
             EmitMapMethod(sb, decl, match, comp);
@@ -37,23 +37,42 @@ internal static class MapEmitter
 
     private static void EmitMapMethod(StringBuilder sb, MappingDecl decl, MatchResult match, Compilation comp)
     {
-        sb.Append("    public static ").Append(decl.DestinationTypeFqn).Append(" Map(")
+        var partialKw = decl.UserPartialMethod is not null ? "partial " : "";
+        sb.Append("    public static ").Append(partialKw).Append(decl.DestinationTypeFqn).Append(" Map(")
           .Append(decl.SourceTypeFqn).Append(" src)\n    {\n");
         sb.Append("        global::System.ArgumentNullException.ThrowIfNull(src);\n");
         sb.Append("        return new ").Append(decl.DestinationTypeFqn).Append("(\n");
 
-        for (int i = 0; i < match.Mappings.Count; i++)
+        var totalArgs = match.Mappings.Count + match.Constants.Count;
+        var idx = 0;
+
+        foreach (var m in match.Mappings)
         {
-            var m = match.Mappings[i];
             var conv = ConversionResolver.Resolve(m.SourceType, m.TargetType, comp);
             var expr = ConversionResolver.Apply(conv, "src." + m.SourcePropertyName, m.TargetType);
             sb.Append("            ").Append(m.TargetParamName).Append(": ").Append(expr);
-            if (i < match.Mappings.Count - 1) sb.Append(',');
+            if (++idx < totalArgs) sb.Append(',');
+            sb.Append('\n');
+        }
+
+        foreach (var c in match.Constants)
+        {
+            sb.Append("            ").Append(c.TargetParamName).Append(": ").Append(FormatLiteral(c.Value));
+            if (++idx < totalArgs) sb.Append(',');
             sb.Append('\n');
         }
 
         sb.Append("        );\n    }\n");
     }
+
+    private static string FormatLiteral(object? value) => value switch
+    {
+        null => "null",
+        string s => "\"" + s.Replace("\\", "\\\\").Replace("\"", "\\\"") + "\"",
+        bool b => b ? "true" : "false",
+        char c => "'" + c + "'",
+        _ => value.ToString() ?? "null",
+    };
 
     private static string StripGlobal(string fqn) =>
         fqn.StartsWith("global::", System.StringComparison.Ordinal) ? fqn.Substring(8) : fqn;

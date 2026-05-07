@@ -15,4 +15,5 @@ internal sealed record MappingDecl(
     string SourceTypeFqn,
     string DestinationTypeFqn,
     MappingKind Kind,
-    Microsoft.CodeAnalysis.Location Location);
+    Microsoft.CodeAnalysis.Location Location,
+    Microsoft.CodeAnalysis.IMethodSymbol? UserPartialMethod = null);
