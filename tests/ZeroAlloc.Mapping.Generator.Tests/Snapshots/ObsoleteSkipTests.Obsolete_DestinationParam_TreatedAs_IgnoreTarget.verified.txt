@@ -6,8 +6,9 @@ partial class M
     public static global::Dst Map(global::Src src)
     {
         global::System.ArgumentNullException.ThrowIfNull(src);
-        return new global::Dst(
+        var __dst = new global::Dst(
             A: src.A
         );
+        return __dst;
     }
 }

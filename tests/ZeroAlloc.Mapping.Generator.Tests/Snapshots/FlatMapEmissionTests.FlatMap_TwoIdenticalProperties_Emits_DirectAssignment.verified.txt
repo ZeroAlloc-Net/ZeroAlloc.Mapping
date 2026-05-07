@@ -6,9 +6,10 @@ partial class AppMappings
     public static global::Order Map(global::OrderRequest src)
     {
         global::System.ArgumentNullException.ThrowIfNull(src);
-        return new global::Order(
+        var __dst = new global::Order(
             Id: src.Id,
             Notes: src.Notes
         );
+        return __dst;
     }
 }

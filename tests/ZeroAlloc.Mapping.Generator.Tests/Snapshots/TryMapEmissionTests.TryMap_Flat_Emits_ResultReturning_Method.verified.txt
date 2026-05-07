@@ -8,9 +8,10 @@ partial class M
         if (src is null) return global::ZeroAlloc.Results.Result<global::Dst, global::ZeroAlloc.Mapping.MappingError>.Failure(new global::ZeroAlloc.Mapping.MappingError("mapping.source.null", "(root)"));
         try
         {
-            return global::ZeroAlloc.Results.Result<global::Dst, global::ZeroAlloc.Mapping.MappingError>.Success(new global::Dst(
+            var __dst = new global::Dst(
                 Id: src.Id
-            ));
+            );
+            return global::ZeroAlloc.Results.Result<global::Dst, global::ZeroAlloc.Mapping.MappingError>.Success(__dst);
         }
         catch (global::System.Exception ex)
         {

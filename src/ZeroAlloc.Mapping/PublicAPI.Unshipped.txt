@@ -19,6 +19,10 @@ ZeroAlloc.Mapping.CaseInsensitiveMappingAttribute
 ZeroAlloc.Mapping.CaseInsensitiveMappingAttribute.CaseInsensitiveMappingAttribute() -> void
 ZeroAlloc.Mapping.StrictSourceMappingAttribute
 ZeroAlloc.Mapping.StrictSourceMappingAttribute.StrictSourceMappingAttribute() -> void
+ZeroAlloc.Mapping.BeforeMapAttribute
+ZeroAlloc.Mapping.BeforeMapAttribute.BeforeMapAttribute() -> void
+ZeroAlloc.Mapping.AfterMapAttribute
+ZeroAlloc.Mapping.AfterMapAttribute.AfterMapAttribute() -> void
 ZeroAlloc.Mapping.MappingError
 ZeroAlloc.Mapping.MappingError.MappingError() -> void
 ZeroAlloc.Mapping.MappingError.MappingError(string! Code, string! PropertyPath, string? Reason = null, System.Collections.Generic.IReadOnlyList<ZeroAlloc.Mapping.MappingError>? Children = null) -> void

@@ -8,9 +8,11 @@ partial class M
         if (src is null) return global::ZeroAlloc.Results.Result<global::Dst, global::ZeroAlloc.Mapping.MappingError>.Failure(new global::ZeroAlloc.Mapping.MappingError("mapping.source.null", "(root)"));
         try
         {
+            Validate(src);
             var __dst = new global::Dst(
-                Email: new global::Email(src.Email)
+                Id: src.Id
             );
+            Audit(src, __dst);
             return global::ZeroAlloc.Results.Result<global::Dst, global::ZeroAlloc.Mapping.MappingError>.Success(__dst);
         }
         catch (global::System.Exception ex)

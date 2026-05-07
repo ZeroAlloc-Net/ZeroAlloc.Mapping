@@ -44,7 +44,11 @@ internal static class MapEmitter
         sb.Append("    public static ").Append(partialKw).Append(decl.DestinationTypeFqn).Append(" Map(")
           .Append(decl.SourceTypeFqn).Append(" src)\n    {\n");
         sb.Append("        global::System.ArgumentNullException.ThrowIfNull(src);\n");
-        sb.Append("        return new ").Append(decl.DestinationTypeFqn).Append("(\n");
+
+        foreach (var hook in MatchingHooks(owningClass, isAfter: false))
+            sb.Append("        ").Append(hook.MethodName).Append("(src);\n");
+
+        sb.Append("        var __dst = new ").Append(decl.DestinationTypeFqn).Append("(\n");
 
         var totalArgs = match.Mappings.Count + match.Constants.Count;
         var idx = 0;
@@ -64,7 +68,30 @@ internal static class MapEmitter
             sb.Append('\n');
         }
 
-        sb.Append("        );\n    }\n");
+        sb.Append("        );\n");
+
+        foreach (var hook in MatchingHooks(owningClass, isAfter: true))
+            sb.Append("        ").Append(hook.MethodName).Append("(src, __dst);\n");
+
+        sb.Append("        return __dst;\n    }\n");
+    }
+
+    internal static System.Collections.Generic.IEnumerable<HookMethod> MatchingHooks(MapperClass cls, bool isAfter)
+    {
+        if (cls.Hooks is null) yield break;
+        foreach (var h in cls.Hooks)
+        {
+            if (h.IsAfter != isAfter) continue;
+            if (isAfter)
+            {
+                if (h.ParamTypes.Length != 2) continue;
+            }
+            else
+            {
+                if (h.ParamTypes.Length != 1) continue;
+            }
+            yield return h;
+        }
     }
 
     private static string ResolveExpression(PropertyMapping m, MapperClass owningClass, Compilation comp)

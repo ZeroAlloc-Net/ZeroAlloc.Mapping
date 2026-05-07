@@ -3,11 +3,12 @@
 #nullable enable
 partial class M
 {
-    public static partial global::Dst Map(global::Src src)
+    public static global::Dst Map(global::Src src)
     {
         global::System.ArgumentNullException.ThrowIfNull(src);
+        Validate(src);
         var __dst = new global::Dst(
-            City: src.Customer!.Address!.City
+            Id: src.Id
         );
         return __dst;
     }

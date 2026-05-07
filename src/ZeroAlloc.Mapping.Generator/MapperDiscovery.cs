@@ -53,13 +53,32 @@ internal static class MapperDiscovery
                 a.AttributeClass is { Name: "StrictSourceMappingAttribute" } ac &&
                 ac.ContainingNamespace is { Name: "Mapping", ContainingNamespace.Name: "ZeroAlloc" });
 
+            var hooks = new System.Collections.Generic.List<HookMethod>();
+            foreach (var m in type.GetMembers().OfType<IMethodSymbol>().Where(m => m.IsStatic))
+            {
+                foreach (var attr in m.GetAttributes())
+                {
+                    var ac = attr.AttributeClass;
+                    var isBefore = ac is { Name: "BeforeMapAttribute" } &&
+                                   ac.ContainingNamespace is { Name: "Mapping", ContainingNamespace.Name: "ZeroAlloc" };
+                    var isAfter = ac is { Name: "AfterMapAttribute" } &&
+                                  ac.ContainingNamespace is { Name: "Mapping", ContainingNamespace.Name: "ZeroAlloc" };
+                    if (!isBefore && !isAfter) continue;
+                    hooks.Add(new HookMethod(
+                        MethodName: m.Name,
+                        ParamTypes: m.Parameters.Select(p => p.Type).ToArray(),
+                        IsAfter: isAfter));
+                }
+            }
+
             yield return new MapperClass(
                 Namespace: type.ContainingNamespace.IsGlobalNamespace
                     ? "" : type.ContainingNamespace.ToDisplayString(),
                 ClassName: type.Name,
                 Mappings: decls,
                 CaseInsensitive: caseInsensitive,
-                StrictSource: strictSource);
+                StrictSource: strictSource,
+                Hooks: hooks);
         }
     }
 

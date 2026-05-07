@@ -6,16 +6,18 @@ partial class M
     public static global::Order Map(global::OrderRequest src)
     {
         global::System.ArgumentNullException.ThrowIfNull(src);
-        return new global::Order(
+        var __dst = new global::Order(
             Id: src.Id,
             Customer: Map(src.Customer)
         );
+        return __dst;
     }
     public static global::Customer Map(global::CustomerRequest src)
     {
         global::System.ArgumentNullException.ThrowIfNull(src);
-        return new global::Customer(
+        var __dst = new global::Customer(
             Name: src.Name
         );
+        return __dst;
     }
 }

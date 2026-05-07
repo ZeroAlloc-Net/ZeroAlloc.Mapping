@@ -6,9 +6,10 @@ partial class M
     public static partial global::Dst Map(global::Src src)
     {
         global::System.ArgumentNullException.ThrowIfNull(src);
-        return new global::Dst(
+        var __dst = new global::Dst(
             Id: src.Id,
             CreatedAt: "2026-05-07T00:00:00Z"
         );
+        return __dst;
     }
 }
