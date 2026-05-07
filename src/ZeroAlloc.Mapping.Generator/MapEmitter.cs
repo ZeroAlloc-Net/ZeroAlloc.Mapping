@@ -28,7 +28,10 @@ internal static class MapEmitter
             var match = PropertyMatcher.Match(src, dst, decl.UserPartialMethod);
             if (match is null) continue;
 
-            EmitMapMethod(sb, decl, match, cls, comp);
+            if (decl.Kind == MappingKind.TryMap)
+                TryMapEmitter.EmitTryMapMethod(sb, decl, match, cls, comp);
+            else
+                EmitMapMethod(sb, decl, match, cls, comp);
         }
 
         sb.Append("}\n");
