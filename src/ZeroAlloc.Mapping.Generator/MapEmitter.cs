@@ -28,14 +28,14 @@ internal static class MapEmitter
             var match = PropertyMatcher.Match(src, dst);
             if (match is null) continue;
 
-            EmitMapMethod(sb, decl, match);
+            EmitMapMethod(sb, decl, match, comp);
         }
 
         sb.Append("}\n");
         return sb.ToString();
     }
 
-    private static void EmitMapMethod(StringBuilder sb, MappingDecl decl, MatchResult match)
+    private static void EmitMapMethod(StringBuilder sb, MappingDecl decl, MatchResult match, Compilation comp)
     {
         sb.Append("    public static ").Append(decl.DestinationTypeFqn).Append(" Map(")
           .Append(decl.SourceTypeFqn).Append(" src)\n    {\n");
@@ -45,7 +45,9 @@ internal static class MapEmitter
         for (int i = 0; i < match.Mappings.Count; i++)
         {
             var m = match.Mappings[i];
-            sb.Append("            ").Append(m.TargetParamName).Append(": src.").Append(m.SourcePropertyName);
+            var conv = ConversionResolver.Resolve(m.SourceType, m.TargetType, comp);
+            var expr = ConversionResolver.Apply(conv, "src." + m.SourcePropertyName, m.TargetType);
+            sb.Append("            ").Append(m.TargetParamName).Append(": ").Append(expr);
             if (i < match.Mappings.Count - 1) sb.Append(',');
             sb.Append('\n');
         }
