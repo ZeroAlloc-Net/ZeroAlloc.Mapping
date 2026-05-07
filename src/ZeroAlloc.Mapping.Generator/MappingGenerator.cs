@@ -207,6 +207,26 @@ public sealed class MappingGenerator : IIncrementalGenerator
                 }
             }
 
+            // ZAMP010 — under [StrictSourceMapping], every source prop must be consumed
+            // by a destination param or marked [MapperIgnoreSource].
+            if (cls.StrictSource)
+            {
+                var consumed = new System.Collections.Generic.HashSet<string>(
+                    match.Mappings.Select(m => m.SourcePropertyName), System.StringComparer.Ordinal);
+                foreach (var p in src.GetMembers().OfType<IPropertySymbol>().Where(p => p.DeclaredAccessibility == Accessibility.Public))
+                {
+                    if (consumed.Contains(p.Name)) continue;
+                    if (PropertyMatcher.IsObsolete(p)) continue;
+                    var ignore = p.GetAttributes().Any(a =>
+                        a.AttributeClass is { Name: "MapperIgnoreSourceAttribute" } ac &&
+                        ac.ContainingNamespace is { Name: "Mapping", ContainingNamespace.Name: "ZeroAlloc" });
+                    if (ignore) continue;
+                    spc.ReportDiagnostic(Diagnostic.Create(
+                        Diagnostics.ZAMP010_UnconsumedSource,
+                        decl.Location, p.Name, src.ToDisplayString()));
+                }
+            }
+
             // ZAMP008 — multiple non-copy public ctors with equal arity.
             if (dst is INamedTypeSymbol nt)
             {

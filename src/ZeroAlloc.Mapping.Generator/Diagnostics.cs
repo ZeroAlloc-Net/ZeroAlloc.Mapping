@@ -70,6 +70,14 @@ internal static class Diagnostics
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
 
+    public static readonly DiagnosticDescriptor ZAMP010_UnconsumedSource = new(
+        id: "ZAMP010",
+        title: "Source property is not consumed under strict source mapping",
+        messageFormat: "Under [StrictSourceMapping], source property '{0}' on '{1}' is not consumed by any destination parameter and not marked [MapperIgnoreSource]",
+        category: Category,
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
     public static readonly DiagnosticDescriptor ZAMP011_CaseInsensitiveAmbiguous = new(
         id: "ZAMP011",
         title: "Case-insensitive matching produces ambiguous source",

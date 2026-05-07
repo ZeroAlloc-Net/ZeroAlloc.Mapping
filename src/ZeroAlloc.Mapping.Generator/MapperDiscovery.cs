@@ -49,12 +49,17 @@ internal static class MapperDiscovery
                 a.AttributeClass is { Name: "CaseInsensitiveMappingAttribute" } ac &&
                 ac.ContainingNamespace is { Name: "Mapping", ContainingNamespace.Name: "ZeroAlloc" });
 
+            var strictSource = type.GetAttributes().Any(a =>
+                a.AttributeClass is { Name: "StrictSourceMappingAttribute" } ac &&
+                ac.ContainingNamespace is { Name: "Mapping", ContainingNamespace.Name: "ZeroAlloc" });
+
             yield return new MapperClass(
                 Namespace: type.ContainingNamespace.IsGlobalNamespace
                     ? "" : type.ContainingNamespace.ToDisplayString(),
                 ClassName: type.Name,
                 Mappings: decls,
-                CaseInsensitive: caseInsensitive);
+                CaseInsensitive: caseInsensitive,
+                StrictSource: strictSource);
         }
     }
 
