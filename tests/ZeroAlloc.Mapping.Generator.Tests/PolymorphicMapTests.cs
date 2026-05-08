@@ -106,4 +106,22 @@ public class PolymorphicMapTests
         var diags = TestHarness.RunDiagnostics(source);
         Assert.Contains(diags, d => d.Id == "ZAMP015");
     }
+
+    [Fact]
+    public void ZAMP015_DoesNotFire_When_Both_Kinds_Coexist_For_Same_Pair()
+    {
+        var source = """
+            using ZeroAlloc.Mapping;
+            public abstract record Animal(string Name);
+            public sealed record Cat(string Name) : Animal(Name);
+            public abstract record AnimalDto(string Name);
+            public sealed record CatDto(string Name) : AnimalDto(Name);
+            [Map<Cat, CatDto>]
+            [TryMap<Cat, CatDto>]
+            [PolymorphicMap<Animal, AnimalDto>]
+            public static partial class M { }
+            """;
+        var diags = TestHarness.RunDiagnostics(source);
+        Assert.DoesNotContain(diags, d => d.Id == "ZAMP015");
+    }
 }

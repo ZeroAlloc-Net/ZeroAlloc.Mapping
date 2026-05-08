@@ -36,8 +36,8 @@ internal static class MapEmitter
             // Update-in-place void overload (only for [Map], gated on settable destination properties).
             if (decl.Kind == MappingKind.Map && decl.UpdateInPlacePartial is not null)
             {
-                var inPlace = MatchUpdateInPlace(src, dst, decl.UpdateInPlacePartial ?? decl.UserPartialMethod, cls.CaseInsensitive);
-                if (inPlace is not null && AllInPlaceDestSettable(dst, inPlace))
+                var inPlace = MatchUpdateInPlace(src, dst, decl.UpdateInPlacePartial, cls.CaseInsensitive);
+                if (inPlace is not null && AllInPlaceDestSettable(inPlace))
                 {
                     EmitUpdateInPlaceMethod(sb, decl, inPlace, cls, comp, src, dst);
                 }
@@ -237,21 +237,13 @@ internal static class MapEmitter
         return new InPlaceMatch(mappings, consts);
     }
 
-    private static bool AllInPlaceDestSettable(INamedTypeSymbol dst, InPlaceMatch match)
+    private static bool AllInPlaceDestSettable(InPlaceMatch match)
     {
         foreach (var m in match.Mappings)
             if (!m.IsSettable) return false;
         foreach (var c in match.Constants)
             if (!c.IsSettable) return false;
         return true;
-    }
-
-    private static bool DestPropertyIsSettable(INamedTypeSymbol dst, string paramName)
-    {
-        var prop = dst.GetMembers(paramName).OfType<IPropertySymbol>()
-            .FirstOrDefault(p => p.DeclaredAccessibility == Accessibility.Public);
-        return prop?.SetMethod is { DeclaredAccessibility: Accessibility.Public } setter
-            && !setter.IsInitOnly;
     }
 
     private static void EmitUpdateInPlaceMethod(StringBuilder sb, MappingDecl decl, InPlaceMatch match, MapperClass owningClass, Compilation comp, ITypeSymbol srcType, ITypeSymbol dstType)

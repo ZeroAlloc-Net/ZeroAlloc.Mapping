@@ -280,7 +280,7 @@ public sealed class MappingGenerator : IIncrementalGenerator
             // init-only properties don't appear in match.Mappings (constructor-form).
             if (decl.UpdateInPlacePartial is not null && decl.Kind == MappingKind.Map)
             {
-                var inPlace = MapEmitter.MatchUpdateInPlace(src, dst, decl.UpdateInPlacePartial ?? decl.UserPartialMethod, cls.CaseInsensitive);
+                var inPlace = MapEmitter.MatchUpdateInPlace(src, dst, decl.UpdateInPlacePartial, cls.CaseInsensitive);
                 if (inPlace is not null)
                 {
                     foreach (var m in inPlace.Mappings)
@@ -353,8 +353,17 @@ public sealed class MappingGenerator : IIncrementalGenerator
                         poly.Location, kindLabel, baseDisplay, baseDstDisplay));
                 }
 
-                // ZAMP015 — mixed kinds among assignable decls.
-                if (mismatchKind.Count > 0)
+                // ZAMP015 — fires only when a (src,dst) pair has a wrong-kind decl with
+                // NO matching-kind sibling for the same pair. A pair that has BOTH kinds
+                // (intentional dual emission) does NOT fire — the dispatcher correctly
+                // selects the matching-kind sibling.
+                var wrongKindOnlyPair = mismatchKind
+                    .GroupBy(m => (m.SourceTypeFqn, m.DestinationTypeFqn))
+                    .Any(g => !matchingKind.Any(mk =>
+                        mk.SourceTypeFqn == g.Key.SourceTypeFqn &&
+                        mk.DestinationTypeFqn == g.Key.DestinationTypeFqn));
+
+                if (wrongKindOnlyPair)
                 {
                     spc.ReportDiagnostic(Diagnostic.Create(
                         Diagnostics.ZAMP015_PolymorphicMixedKinds,
