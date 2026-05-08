@@ -16,7 +16,7 @@ internal static class TryMapEmitter
           .Append(".Failure(new global::ZeroAlloc.Mapping.MappingError(\"mapping.source.null\", \"(root)\"));\n");
         sb.Append("        try\n        {\n");
 
-        foreach (var hook in MapEmitter.MatchingHooks(owningClass, isAfter: false, srcType, dstType))
+        foreach (var hook in MapEmitter.MatchingHooks(owningClass, isAfter: false, srcType, dstType, comp))
             sb.Append("            ").Append(hook.MethodName).Append("(src);\n");
 
         sb.Append("            var __dst = new ").Append(decl.DestinationTypeFqn).Append("(\n");
@@ -51,7 +51,7 @@ internal static class TryMapEmitter
 
         sb.Append("            );\n");
 
-        foreach (var hook in MapEmitter.MatchingHooks(owningClass, isAfter: true, srcType, dstType))
+        foreach (var hook in MapEmitter.MatchingHooks(owningClass, isAfter: true, srcType, dstType, comp))
             sb.Append("            ").Append(hook.MethodName).Append("(src, __dst);\n");
 
         sb.Append("            return ").Append(resultType).Append(".Success(__dst);\n");

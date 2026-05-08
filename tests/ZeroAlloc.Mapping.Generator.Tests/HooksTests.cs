@@ -59,6 +59,24 @@ public class HooksTests
     }
 
     [Fact]
+    public Task BeforeMap_Hook_Fires_For_Derived_Source_Type()
+    {
+        var source = """
+            using ZeroAlloc.Mapping;
+            public abstract record SrcBase(int Id);
+            public sealed record SrcDerived(int Id, string Extra) : SrcBase(Id);
+            public sealed record Dst(int Id);
+            [Map<SrcDerived, Dst>]
+            public static partial class M
+            {
+                [BeforeMap]
+                public static void OnBase(SrcBase src) { }
+            }
+            """;
+        return Verifier.Verify(TestHarness.RunGenerator(source)).UseDirectory("Snapshots");
+    }
+
+    [Fact]
     public Task TryMap_Hooks_Live_Inside_TryBlock()
     {
         var source = """
