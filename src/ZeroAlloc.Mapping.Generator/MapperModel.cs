@@ -17,7 +17,8 @@ internal sealed record MapperClass(
     System.Collections.Generic.IReadOnlyList<MappingDecl> Mappings,
     bool CaseInsensitive = false,
     bool StrictSource = false,
-    System.Collections.Generic.IReadOnlyList<HookMethod>? Hooks = null);
+    System.Collections.Generic.IReadOnlyList<HookMethod>? Hooks = null,
+    string? Culture = null);
 
 internal sealed record MappingDecl(
     string SourceTypeFqn,

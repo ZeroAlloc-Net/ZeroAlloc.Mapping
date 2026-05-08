@@ -39,7 +39,7 @@ internal static class TryMapEmitter
             else
             {
                 var conv = ConversionResolver.Resolve(m.SourceType, m.TargetType, comp);
-                expr = ConversionResolver.Apply(conv, "src." + m.SourcePropertyName, m.TargetType);
+                expr = ConversionResolver.Apply(conv, "src." + m.SourcePropertyName, m.TargetType, owningClass.Culture);
             }
             sb.Append("                ").Append(m.TargetParamName).Append(": ").Append(expr);
             if (++idx < totalArgs) sb.Append(',');

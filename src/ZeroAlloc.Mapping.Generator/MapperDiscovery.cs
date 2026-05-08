@@ -121,6 +121,19 @@ internal static class MapperDiscovery
                 }
             }
 
+            string? culture = null;
+            foreach (var a in type.GetAttributes())
+            {
+                if (a.AttributeClass is { Name: "MappingCultureAttribute" } ac &&
+                    ac.ContainingNamespace is { Name: "Mapping", ContainingNamespace.Name: "ZeroAlloc" } &&
+                    a.ConstructorArguments.Length == 1 &&
+                    a.ConstructorArguments[0].Value is string s)
+                {
+                    culture = s;
+                    break;
+                }
+            }
+
             yield return new MapperClass(
                 Namespace: type.ContainingNamespace.IsGlobalNamespace
                     ? "" : type.ContainingNamespace.ToDisplayString(),
@@ -128,7 +141,8 @@ internal static class MapperDiscovery
                 Mappings: decls,
                 CaseInsensitive: caseInsensitive,
                 StrictSource: strictSource,
-                Hooks: hooks);
+                Hooks: hooks,
+                Culture: culture);
         }
     }
 

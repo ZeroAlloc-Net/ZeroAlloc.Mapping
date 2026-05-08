@@ -66,7 +66,7 @@ internal static class ConversionResolver
         return new Conversion(ConversionKind.None);
     }
 
-    public static string Apply(Conversion conv, string srcExpr, ITypeSymbol target)
+    public static string Apply(Conversion conv, string srcExpr, ITypeSymbol target, string? culture = null)
     {
         return conv.Kind switch
         {
@@ -75,11 +75,17 @@ internal static class ConversionResolver
             ConversionKind.SingleArgConstructor => $"new {target.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}({srcExpr})",
             ConversionKind.EnumParse => $"global::System.Enum.Parse<{target.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}>({srcExpr})",
             ConversionKind.Parse => HasFormatProvider(conv.Method)
-                ? $"{target.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}.Parse({srcExpr}, global::System.Globalization.CultureInfo.InvariantCulture)"
+                ? $"{target.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}.Parse({srcExpr}, {CultureExpr(culture)})"
                 : $"{target.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}.Parse({srcExpr})",
             _ => srcExpr,
         };
     }
+
+    private static string CultureExpr(string? culture) =>
+        culture is null
+            ? "global::System.Globalization.CultureInfo.InvariantCulture"
+            : "global::System.Globalization.CultureInfo.GetCultureInfo(\""
+              + culture.Replace("\\", "\\\\").Replace("\"", "\\\"") + "\")";
 
     private static bool HasFormatProvider(IMethodSymbol? method)
     {

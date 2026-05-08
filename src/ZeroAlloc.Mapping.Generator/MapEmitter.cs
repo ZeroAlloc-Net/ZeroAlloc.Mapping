@@ -138,7 +138,7 @@ internal static class MapEmitter
 
         // Standard conversion
         var conv = ConversionResolver.Resolve(m.SourceType, m.TargetType, comp);
-        return ConversionResolver.Apply(conv, srcExpr, m.TargetType);
+        return ConversionResolver.Apply(conv, srcExpr, m.TargetType, owningClass.Culture);
     }
 
     internal static string FlatteningOperator(PropertyMapping m) =>
