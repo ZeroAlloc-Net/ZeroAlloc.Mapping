@@ -30,7 +30,10 @@ public sealed class MappingGenerator : IIncrementalGenerator
         var tryMapAttr = comp.GetTypeByMetadataName(MapperDiscovery.TryMapAttributeFqn);
         var reverseMapAttr = comp.GetTypeByMetadataName(MapperDiscovery.ReverseMapAttributeFqn);
         var reverseTryMapAttr = comp.GetTypeByMetadataName(MapperDiscovery.ReverseTryMapAttributeFqn);
-        if (mapAttr is null && tryMapAttr is null && reverseMapAttr is null && reverseTryMapAttr is null) return;
+        var polymorphicMapAttr = comp.GetTypeByMetadataName(MapperDiscovery.PolymorphicMapAttributeFqn);
+        var polymorphicTryMapAttr = comp.GetTypeByMetadataName(MapperDiscovery.PolymorphicTryMapAttributeFqn);
+        if (mapAttr is null && tryMapAttr is null && reverseMapAttr is null && reverseTryMapAttr is null
+            && polymorphicMapAttr is null && polymorphicTryMapAttr is null) return;
 
         foreach (var type in EnumerateTypes(comp.GlobalNamespace))
         {
@@ -40,7 +43,9 @@ public sealed class MappingGenerator : IIncrementalGenerator
                 return (mapAttr is not null && SymbolEqualityComparer.Default.Equals(orig, mapAttr))
                     || (tryMapAttr is not null && SymbolEqualityComparer.Default.Equals(orig, tryMapAttr))
                     || (reverseMapAttr is not null && SymbolEqualityComparer.Default.Equals(orig, reverseMapAttr))
-                    || (reverseTryMapAttr is not null && SymbolEqualityComparer.Default.Equals(orig, reverseTryMapAttr));
+                    || (reverseTryMapAttr is not null && SymbolEqualityComparer.Default.Equals(orig, reverseTryMapAttr))
+                    || (polymorphicMapAttr is not null && SymbolEqualityComparer.Default.Equals(orig, polymorphicMapAttr))
+                    || (polymorphicTryMapAttr is not null && SymbolEqualityComparer.Default.Equals(orig, polymorphicTryMapAttr));
             });
             if (!hasAny) continue;
 
@@ -93,8 +98,7 @@ public sealed class MappingGenerator : IIncrementalGenerator
             // collide case-insensitively and the destination has a constructor param matching them.
             if (cls.CaseInsensitive)
             {
-                var grouped = src.GetMembers().OfType<IPropertySymbol>()
-                    .Where(p => p.DeclaredAccessibility == Accessibility.Public)
+                var grouped = PropertyMatcher.GetAllPublicProperties(src)
                     .Where(p => !PropertyMatcher.IsObsolete(p))
                     .GroupBy(p => p.Name, System.StringComparer.OrdinalIgnoreCase)
                     .Where(g => g.Count() > 1);
@@ -177,9 +181,7 @@ public sealed class MappingGenerator : IIncrementalGenerator
             if (decl.UserPartialMethod is not null)
             {
                 var sourceProps = new System.Collections.Generic.HashSet<string>(
-                    src.GetMembers().OfType<IPropertySymbol>()
-                        .Where(p => p.DeclaredAccessibility == Accessibility.Public)
-                        .Select(p => p.Name),
+                    PropertyMatcher.GetAllPublicProperties(src).Select(p => p.Name),
                     System.StringComparer.Ordinal);
                 var ctorParams = new System.Collections.Generic.HashSet<string>(
                     match.Constructor.Parameters.Select(p => p.Name),
@@ -199,8 +201,8 @@ public sealed class MappingGenerator : IIncrementalGenerator
                                 foreach (var segment in srcName.Split('.'))
                                 {
                                     if (cursor is null) break;
-                                    var found = cursor.GetMembers(segment).OfType<IPropertySymbol>()
-                                        .FirstOrDefault(p => p.DeclaredAccessibility == Accessibility.Public);
+                                    var found = PropertyMatcher.GetAllPublicProperties(cursor)
+                                        .FirstOrDefault(p => p.Name == segment);
                                     if (found is null)
                                     {
                                         spc.ReportDiagnostic(Diagnostic.Create(
@@ -239,7 +241,7 @@ public sealed class MappingGenerator : IIncrementalGenerator
                 var ctorParamNames = new System.Collections.Generic.HashSet<string>(
                     match.Constructor.Parameters.Select(p => p.Name), System.StringComparer.Ordinal);
                 var sourcePropSet = new System.Collections.Generic.HashSet<string>(
-                    src.GetMembers().OfType<IPropertySymbol>().Select(p => p.Name), System.StringComparer.Ordinal);
+                    PropertyMatcher.GetAllPublicProperties(src).Select(p => p.Name), System.StringComparer.Ordinal);
 
                 foreach (var rename in renames)
                 {
@@ -258,7 +260,7 @@ public sealed class MappingGenerator : IIncrementalGenerator
             {
                 var consumed = new System.Collections.Generic.HashSet<string>(
                     match.Mappings.Select(m => m.SourcePropertyName), System.StringComparer.Ordinal);
-                foreach (var p in src.GetMembers().OfType<IPropertySymbol>().Where(p => p.DeclaredAccessibility == Accessibility.Public))
+                foreach (var p in PropertyMatcher.GetAllPublicProperties(src))
                 {
                     if (consumed.Contains(p.Name)) continue;
                     if (PropertyMatcher.IsObsolete(p)) continue;
@@ -269,6 +271,30 @@ public sealed class MappingGenerator : IIncrementalGenerator
                     spc.ReportDiagnostic(Diagnostic.Create(
                         Diagnostics.ZAMP010_UnconsumedSource,
                         decl.Location, p.Name, src.ToDisplayString()));
+                }
+            }
+
+            // ZAMP012 — update-in-place void overload requested but a matched destination
+            // property has no public setter (init-only or read-only). Walk the in-place
+            // matcher's results so this also fires for parameterless-ctor POCOs whose
+            // init-only properties don't appear in match.Mappings (constructor-form).
+            if (decl.UpdateInPlacePartial is not null && decl.Kind == MappingKind.Map)
+            {
+                var inPlace = MapEmitter.MatchUpdateInPlace(src, dst, decl.UpdateInPlacePartial, cls.CaseInsensitive);
+                if (inPlace is not null)
+                {
+                    foreach (var m in inPlace.Mappings)
+                    {
+                        if (!m.IsSettable)
+                        {
+                            spc.ReportDiagnostic(Diagnostic.Create(
+                                Diagnostics.ZAMP012_UpdateInPlace_NotSettable,
+                                decl.Location,
+                                dst.ToDisplayString(),
+                                m.TargetPropertyName));
+                            break;
+                        }
+                    }
                 }
             }
 
@@ -285,6 +311,63 @@ public sealed class MappingGenerator : IIncrementalGenerator
                     spc.ReportDiagnostic(Diagnostic.Create(
                         Diagnostics.ZAMP008_AmbiguousConstructor,
                         decl.Location, dst.ToDisplayString()));
+                }
+            }
+        }
+
+        // ZAMP013/014/015 — polymorphic dispatcher diagnostics.
+        if (cls.PolymorphicDecls is not null)
+        {
+            foreach (var poly in cls.PolymorphicDecls)
+            {
+                var kindLabel = poly.Kind == MappingKind.Map ? "Map" : "TryMap";
+                var baseDisplay = poly.BaseTypeSymbol.ToDisplayString();
+                var baseDstDisplay = poly.BaseDestinationTypeSymbol.ToDisplayString();
+
+                // ZAMP014 — sealed base.
+                if (poly.BaseTypeSymbol.IsSealed)
+                {
+                    spc.ReportDiagnostic(Diagnostic.Create(
+                        Diagnostics.ZAMP014_PolymorphicSealedBase,
+                        poly.Location, kindLabel, baseDisplay, baseDstDisplay));
+                }
+
+                // Filter all decls assignable to the polymorphic base/destination.
+                var assignable = new System.Collections.Generic.List<MappingDecl>();
+                foreach (var decl in cls.Mappings)
+                {
+                    if (decl.SourceTypeSymbol is null || decl.DestinationTypeSymbol is null) continue;
+                    if (!MapEmitter.IsAssignableTo(decl.SourceTypeSymbol, poly.BaseTypeSymbol)) continue;
+                    if (!MapEmitter.IsAssignableTo(decl.DestinationTypeSymbol, poly.BaseDestinationTypeSymbol)) continue;
+                    assignable.Add(decl);
+                }
+
+                var matchingKind = assignable.Where(d => d.Kind == poly.Kind).ToList();
+                var mismatchKind = assignable.Where(d => d.Kind != poly.Kind).ToList();
+
+                // ZAMP013 — no matching-kind cases.
+                if (matchingKind.Count == 0)
+                {
+                    spc.ReportDiagnostic(Diagnostic.Create(
+                        Diagnostics.ZAMP013_PolymorphicNoCases,
+                        poly.Location, kindLabel, baseDisplay, baseDstDisplay));
+                }
+
+                // ZAMP015 — fires only when a (src,dst) pair has a wrong-kind decl with
+                // NO matching-kind sibling for the same pair. A pair that has BOTH kinds
+                // (intentional dual emission) does NOT fire — the dispatcher correctly
+                // selects the matching-kind sibling.
+                var wrongKindOnlyPair = mismatchKind
+                    .GroupBy(m => (m.SourceTypeFqn, m.DestinationTypeFqn))
+                    .Any(g => !matchingKind.Any(mk =>
+                        mk.SourceTypeFqn == g.Key.SourceTypeFqn &&
+                        mk.DestinationTypeFqn == g.Key.DestinationTypeFqn));
+
+                if (wrongKindOnlyPair)
+                {
+                    spc.ReportDiagnostic(Diagnostic.Create(
+                        Diagnostics.ZAMP015_PolymorphicMixedKinds,
+                        poly.Location, kindLabel, baseDisplay, baseDstDisplay));
                 }
             }
         }

@@ -6,17 +6,10 @@ Items deferred from v1.0.0. Each entry has a **Graduation signal** that, when me
 > B12 (`[ReverseMap]`), B13 (case-insensitive), B14 (strict source) graduated
 > into v1 — see [`plans/2026-05-07-mapping-v1-extensions-design.md`](plans/2026-05-07-mapping-v1-extensions-design.md).
 
+> **Update 2026-05-08:** B5 (update-in-place), B9 (`[MappingCulture]`), B2 (polymorphic dispatch)
+> graduated into v1.2 — see [`plans/2026-05-08-mapping-v1.2-extensions-design.md`](plans/2026-05-08-mapping-v1.2-extensions-design.md).
+
 For v1 scope, see [`plans/2026-05-07-mapping-design.md`](plans/2026-05-07-mapping-design.md).
-
----
-
-## B2 — Polymorphic / derived-type mapping
-
-**What.** `[Map<Animal, AnimalDto>]` that dispatches at runtime to `Map<Cat, CatDto>` / `Map<Dog, DogDto>` based on the source's runtime type.
-
-**Why deferred.** Most family domains use sealed records (no polymorphism). Adds runtime type checks to the hot path, eroding the zero-allocation guarantee.
-
-**Graduation signal.** A real consumer hits this — typically a domain with abstract base + sealed derived hierarchy that needs uniform DTO output.
 
 ---
 
@@ -27,16 +20,6 @@ For v1 scope, see [`plans/2026-05-07-mapping-design.md`](plans/2026-05-07-mappin
 **Why deferred.** `ZeroAlloc.Specification` already covers expression-tree construction; double coverage risks divergence.
 
 **Graduation signal.** EF Core users specifically ask AND `ZeroAlloc.Specification` doesn't already cover it.
-
----
-
-## B5 — Update-in-place on existing target
-
-**What.** `void Map(TSrc src, TDst existingDst)` — mutate an already-allocated destination instead of constructing a new one.
-
-**Why deferred.** Forces target mutability, conflicting with the `record`/immutable-DTO default in the family.
-
-**Graduation signal.** Real consumer with hot-path entity-tracking pattern (e.g. EF Core change-tracker integration).
 
 ---
 
@@ -70,13 +53,13 @@ For v1 scope, see [`plans/2026-05-07-mapping-design.md`](plans/2026-05-07-mappin
 
 ---
 
-## B9 — `[FormatProvider]` ToString customization
+## B15 — Diagnostic for duplicate `[MappingCulture]` declarations across partial-class parts
 
-**What.** Per-property `IFormatProvider` customisation for `ToString()` conversions.
+**What.** `[MappingCulture]` is `AllowMultiple = false`, but a class declared in two partial-class parts can carry the attribute on each. The C# compiler does not reject this (different syntax sites), and v1.2's `MapperDiscovery` silently picks the first one via `break` and ignores the rest.
 
-**Why deferred.** `ToString()` in a mapper is a smell — formatting belongs at the presentation boundary.
+**Why deferred.** Edge case unlikely to surface in real codebases. Detected during v1.2 final review (M8). Acceptable v1.2 behavior since the chosen culture is deterministic (declaration order).
 
-**Graduation signal.** Real consumer needs locale-aware formatting that can't be deferred to the UI/JSON layer.
+**Graduation signal.** Real consumer hits silent-ignore confusion, OR ZAMP016 candidate when v1.3 cleans up duplicate-attribute diagnostics across the family.
 
 ---
 

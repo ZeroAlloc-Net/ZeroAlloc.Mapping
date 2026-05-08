@@ -53,6 +53,44 @@ public static partial class FlattenFixtures
     public static partial Flat Map(Outer src);
 }
 
+// Update-in-place fixture (B5) — void overload mutates an existing destination instance.
+public sealed class MutableOrder
+{
+    public int Id { get; set; }
+    public string Notes { get; set; } = "";
+}
+public sealed record MutableOrderRequest(int Id, string Notes);
+
+[Map<MutableOrderRequest, MutableOrder>]
+public static partial class UpdateInPlaceFixtures
+{
+    public static partial void Map(MutableOrderRequest src, MutableOrder existingDst);
+}
+
+// Culture fixture (B9) — nl-NL parses "12,34" as 12.34m.
+public sealed record CulturePriceSrc(string Amount);
+public sealed record CulturePriceDst(decimal Amount);
+
+[Map<CulturePriceSrc, CulturePriceDst>]
+[MappingCulture("nl-NL")]
+public static partial class CultureFixtures { }
+
+// Polymorphic fixture (B2) — base-typed dispatch to derived mappings.
+// Derived types redeclare their own primary-ctor parameter so each DTO has
+// its own declared `Name` property (the generator only scans declared members).
+public abstract record AotAnimal;
+public sealed record AotCat(string Name) : AotAnimal;
+public sealed record AotDog(string Name) : AotAnimal;
+
+public abstract record AotAnimalDto;
+public sealed record AotCatDto(string Name) : AotAnimalDto;
+public sealed record AotDogDto(string Name) : AotAnimalDto;
+
+[Map<AotCat, AotCatDto>]
+[Map<AotDog, AotDogDto>]
+[PolymorphicMap<AotAnimal, AotAnimalDto>]
+public static partial class AnimalMappings { }
+
 public static class Program
 {
     public static int Main()
@@ -106,6 +144,25 @@ public static class Program
         var flat = FlattenFixtures.Map(new Outer(new Inner(42)));
         if (flat.Value != 42)
             throw new InvalidOperationException("[MapProperty] flatten returned unexpected payload");
+
+        // B5 update-in-place
+        var existing = new MutableOrder { Id = 0, Notes = "stale" };
+        UpdateInPlaceFixtures.Map(new MutableOrderRequest(42, "fresh"), existing);
+        if (existing.Id != 42 || existing.Notes != "fresh")
+            throw new InvalidOperationException("[Map] update-in-place returned unexpected payload");
+
+        // B9 culture
+        var price = CultureFixtures.Map(new CulturePriceSrc("12,34"));
+        if (price.Amount != 12.34m)
+            throw new InvalidOperationException($"[MappingCulture] nl-NL parse returned {price.Amount}, expected 12.34");
+
+        // B2 polymorphic
+        AotAnimal cat = new AotCat("Whiskers");
+        AotAnimal dog = new AotDog("Rex");
+        var catDto = AnimalMappings.Map(cat);
+        var dogDto = AnimalMappings.Map(dog);
+        if (catDto is not AotCatDto || dogDto is not AotDogDto)
+            throw new InvalidOperationException("[PolymorphicMap] dispatched to wrong derived type");
     }
 
     private static void ExerciseAllocationGates()

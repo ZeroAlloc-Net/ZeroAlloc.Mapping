@@ -3,12 +3,11 @@
 #nullable enable
 partial class M
 {
-    public static global::Dst Map(global::SrcDerived src)
+    public static global::Dst Map(global::Src src)
     {
         global::System.ArgumentNullException.ThrowIfNull(src);
-        OnBase(src);
         var __dst = new global::Dst(
-            Id: src.Id
+            Quantity: int.Parse(src.Quantity, global::System.Globalization.CultureInfo.GetCultureInfo("nl-NL"))
         );
         return __dst;
     }

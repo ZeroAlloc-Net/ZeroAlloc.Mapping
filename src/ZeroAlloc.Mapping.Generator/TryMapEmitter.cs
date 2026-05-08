@@ -39,7 +39,7 @@ internal static class TryMapEmitter
             else
             {
                 var conv = ConversionResolver.Resolve(m.SourceType, m.TargetType, comp);
-                expr = ConversionResolver.Apply(conv, "src." + m.SourcePropertyName, m.TargetType);
+                expr = ConversionResolver.Apply(conv, "src." + m.SourcePropertyName, m.TargetType, owningClass.Culture);
             }
             sb.Append("                ").Append(m.TargetParamName).Append(": ").Append(expr);
             if (++idx < totalArgs) sb.Append(',');
@@ -69,6 +69,33 @@ internal static class TryMapEmitter
         sb.Append("            return ").Append(resultType)
           .Append(".Failure(new global::ZeroAlloc.Mapping.MappingError(\"mapping.constructor.threw\", \"(root)\", ex.Message));\n");
         sb.Append("        }\n");
+        sb.Append("    }\n");
+    }
+
+    public static void EmitPolymorphicTryDispatcher(StringBuilder sb, PolymorphicDecl poly, System.Collections.Generic.List<MappingDecl> cases)
+    {
+        var resultType = "global::ZeroAlloc.Results.Result<" + poly.BaseDestinationTypeFqn + ", global::ZeroAlloc.Mapping.MappingError>";
+
+        sb.Append("    public static ").Append(resultType).Append(" TryMap(")
+          .Append(poly.BaseTypeFqn).Append(" src)\n    {\n");
+        sb.Append("        if (src is null) return ").Append(resultType)
+          .Append(".Failure(new global::ZeroAlloc.Mapping.MappingError(\"mapping.source.null\", \"(root)\"));\n");
+
+        for (int i = 0; i < cases.Count; i++)
+        {
+            var c = cases[i];
+            // Inline conversion: Result<TDerivedDto, E> -> Result<TBaseDto, E> via explicit Success/Failure
+            // (Result<,> is invariant in T, so we cannot return the derived Result directly).
+            sb.Append("        if (src is ").Append(c.SourceTypeFqn).Append(" __").Append(i).Append(")\n        {\n");
+            sb.Append("            var __r").Append(i).Append(" = TryMap(__").Append(i).Append(");\n");
+            sb.Append("            return __r").Append(i).Append(".IsSuccess\n");
+            sb.Append("                ? ").Append(resultType).Append(".Success(__r").Append(i).Append(".Value)\n");
+            sb.Append("                : ").Append(resultType).Append(".Failure(__r").Append(i).Append(".Error);\n");
+            sb.Append("        }\n");
+        }
+
+        sb.Append("        return ").Append(resultType)
+          .Append(".Failure(new global::ZeroAlloc.Mapping.MappingError(\"mapping.polymorphic.unhandled_type\", \"(root)\", \"runtime type \" + src.GetType().FullName + \" has no declared [TryMap]\"));\n");
         sb.Append("    }\n");
     }
 

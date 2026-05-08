@@ -32,10 +32,75 @@ internal static class MapEmitter
                 TryMapEmitter.EmitTryMapMethod(sb, decl, match, cls, comp, src, dst);
             else
                 EmitMapMethod(sb, decl, match, cls, comp, src, dst);
+
+            // Update-in-place void overload (only for [Map], gated on settable destination properties).
+            if (decl.Kind == MappingKind.Map && decl.UpdateInPlacePartial is not null)
+            {
+                var inPlace = MatchUpdateInPlace(src, dst, decl.UpdateInPlacePartial, cls.CaseInsensitive);
+                if (inPlace is not null && AllInPlaceDestSettable(inPlace))
+                {
+                    EmitUpdateInPlaceMethod(sb, decl, inPlace, cls, comp, src, dst);
+                }
+            }
+        }
+
+        // Polymorphic dispatchers (one per [PolymorphicMap<,>] / [PolymorphicTryMap<,>]).
+        if (cls.PolymorphicDecls is not null)
+        {
+            foreach (var poly in cls.PolymorphicDecls)
+            {
+                var matchingCases = FilterMatchingCases(cls, poly);
+                if (matchingCases.Count == 0) continue;
+                if (poly.Kind == MappingKind.Map)
+                    EmitPolymorphicDispatcher(sb, poly, matchingCases);
+                else
+                    TryMapEmitter.EmitPolymorphicTryDispatcher(sb, poly, matchingCases);
+            }
         }
 
         sb.Append("}\n");
         return sb.ToString();
+    }
+
+    internal static System.Collections.Generic.List<MappingDecl> FilterMatchingCases(MapperClass cls, PolymorphicDecl poly)
+    {
+        var result = new System.Collections.Generic.List<MappingDecl>();
+        foreach (var decl in cls.Mappings)
+        {
+            if (decl.Kind != poly.Kind) continue;
+            if (decl.SourceTypeSymbol is null || decl.DestinationTypeSymbol is null) continue;
+            if (!IsAssignableTo(decl.SourceTypeSymbol, poly.BaseTypeSymbol)) continue;
+            if (!IsAssignableTo(decl.DestinationTypeSymbol, poly.BaseDestinationTypeSymbol)) continue;
+            result.Add(decl);
+        }
+        return result;
+    }
+
+    internal static bool IsAssignableTo(INamedTypeSymbol derived, INamedTypeSymbol baseType)
+    {
+        if (SymbolEqualityComparer.Default.Equals(derived, baseType)) return true;
+        var cursor = derived.BaseType;
+        while (cursor is not null)
+        {
+            if (SymbolEqualityComparer.Default.Equals(cursor, baseType)) return true;
+            cursor = cursor.BaseType;
+        }
+        return derived.AllInterfaces.Any(i => SymbolEqualityComparer.Default.Equals(i, baseType));
+    }
+
+    private static void EmitPolymorphicDispatcher(StringBuilder sb, PolymorphicDecl poly, System.Collections.Generic.List<MappingDecl> cases)
+    {
+        sb.Append("    public static ").Append(poly.BaseDestinationTypeFqn).Append(" Map(")
+          .Append(poly.BaseTypeFqn).Append(" src)\n    {\n");
+        sb.Append("        global::System.ArgumentNullException.ThrowIfNull(src);\n");
+        sb.Append("        return src switch\n        {\n");
+        for (int i = 0; i < cases.Count; i++)
+        {
+            var c = cases[i];
+            sb.Append("            ").Append(c.SourceTypeFqn).Append(" __").Append(i).Append(" => Map(__").Append(i).Append("),\n");
+        }
+        sb.Append("            _ => throw new global::System.InvalidOperationException(\"No polymorphic mapping for runtime type \" + src.GetType().FullName)\n");
+        sb.Append("        };\n    }\n");
     }
 
     private static void EmitMapMethod(StringBuilder sb, MappingDecl decl, MatchResult match, MapperClass owningClass, Compilation comp, ITypeSymbol srcType, ITypeSymbol dstType)
@@ -74,6 +139,145 @@ internal static class MapEmitter
             sb.Append("        ").Append(hook.MethodName).Append("(src, __dst);\n");
 
         sb.Append("        return __dst;\n    }\n");
+    }
+
+    internal sealed record InPlaceMapping(
+        string TargetPropertyName,
+        string SourcePropertyName,
+        ITypeSymbol SourceType,
+        ITypeSymbol TargetType,
+        bool IsFlattened = false,
+        bool IsSettable = true);
+    internal sealed record InPlaceConstant(string TargetPropertyName, object? Value, ITypeSymbol TargetType, bool IsSettable = true);
+    internal sealed record InPlaceMatch(
+        System.Collections.Generic.IReadOnlyList<InPlaceMapping> Mappings,
+        System.Collections.Generic.IReadOnlyList<InPlaceConstant> Constants);
+
+    internal static InPlaceMatch? MatchUpdateInPlace(INamedTypeSymbol source, INamedTypeSymbol destination, IMethodSymbol? userPartial, bool caseInsensitive)
+    {
+        var nameComparer = caseInsensitive ? System.StringComparer.OrdinalIgnoreCase : System.StringComparer.Ordinal;
+
+        var sourceProps = new System.Collections.Generic.Dictionary<string, IPropertySymbol>(nameComparer);
+        foreach (var p in PropertyMatcher.GetAllPublicProperties(source))
+        {
+            sourceProps[p.Name] = p;
+        }
+
+        var renames = new System.Collections.Generic.Dictionary<string, string>(System.StringComparer.Ordinal);
+        var constants = new System.Collections.Generic.Dictionary<string, object?>(System.StringComparer.Ordinal);
+        var ignoreTargets = new System.Collections.Generic.HashSet<string>(System.StringComparer.Ordinal);
+
+        if (userPartial is not null)
+        {
+            foreach (var attr in userPartial.GetAttributes())
+            {
+                var name = attr.AttributeClass?.Name;
+                if (name == "MapPropertyAttribute" && attr.ConstructorArguments.Length == 2)
+                {
+                    var srcProp = attr.ConstructorArguments[0].Value as string;
+                    var tgtProp = attr.ConstructorArguments[1].Value as string;
+                    if (srcProp is not null && tgtProp is not null)
+                        renames[tgtProp] = srcProp;
+                }
+                else if (name == "MapValueAttribute" && attr.ConstructorArguments.Length == 2)
+                {
+                    var tgtProp = attr.ConstructorArguments[0].Value as string;
+                    if (tgtProp is not null)
+                        constants[tgtProp] = attr.ConstructorArguments[1].Value;
+                }
+                else if (name == "MapperIgnoreTargetAttribute" && attr.ConstructorArguments.Length == 1)
+                {
+                    if (attr.ConstructorArguments[0].Value is string ig) ignoreTargets.Add(ig);
+                }
+            }
+        }
+
+        var mappings = new System.Collections.Generic.List<InPlaceMapping>();
+        var consts = new System.Collections.Generic.List<InPlaceConstant>();
+
+        foreach (var dp in PropertyMatcher.GetAllPublicProperties(destination))
+        {
+            if (PropertyMatcher.IsObsolete(dp)) continue;
+            if (ignoreTargets.Contains(dp.Name)) continue;
+            // Property must have any kind of setter to be a candidate (init-only is recorded
+            // as IsSettable=false so AllInPlaceDestSettable can gate body emission and ZAMP012
+            // can fire on partial-settable POCOs).
+            if (dp.SetMethod is not { DeclaredAccessibility: Accessibility.Public } setter) continue;
+            var isSettable = !setter.IsInitOnly;
+
+            if (constants.TryGetValue(dp.Name, out var constValue))
+            {
+                consts.Add(new InPlaceConstant(dp.Name, constValue, dp.Type, isSettable));
+                continue;
+            }
+
+            var sourceName = renames.TryGetValue(dp.Name, out var rename) ? rename : dp.Name;
+
+            if (sourceName.Contains('.'))
+            {
+                var (leaf, leafType) = PropertyMatcher.WalkDottedPath(source, sourceName);
+                if (leaf is null || leafType is null) continue;
+                mappings.Add(new InPlaceMapping(
+                    TargetPropertyName: dp.Name,
+                    SourcePropertyName: sourceName,
+                    SourceType: leafType,
+                    TargetType: dp.Type,
+                    IsFlattened: true,
+                    IsSettable: isSettable));
+                continue;
+            }
+
+            if (sourceProps.TryGetValue(sourceName, out var srcProp))
+            {
+                if (!renames.ContainsKey(dp.Name) && PropertyMatcher.IsObsolete(srcProp)) continue;
+                mappings.Add(new InPlaceMapping(dp.Name, srcProp.Name, srcProp.Type, dp.Type, IsFlattened: false, IsSettable: isSettable));
+            }
+        }
+
+        return new InPlaceMatch(mappings, consts);
+    }
+
+    private static bool AllInPlaceDestSettable(InPlaceMatch match)
+    {
+        foreach (var m in match.Mappings)
+            if (!m.IsSettable) return false;
+        foreach (var c in match.Constants)
+            if (!c.IsSettable) return false;
+        return true;
+    }
+
+    private static void EmitUpdateInPlaceMethod(StringBuilder sb, MappingDecl decl, InPlaceMatch match, MapperClass owningClass, Compilation comp, ITypeSymbol srcType, ITypeSymbol dstType)
+    {
+        sb.Append("    public static partial void Map(")
+          .Append(decl.SourceTypeFqn).Append(" src, ")
+          .Append(decl.DestinationTypeFqn).Append(" existingDst)\n    {\n");
+        sb.Append("        global::System.ArgumentNullException.ThrowIfNull(src);\n");
+        sb.Append("        global::System.ArgumentNullException.ThrowIfNull(existingDst);\n");
+
+        foreach (var hook in MatchingHooks(owningClass, isAfter: false, srcType, dstType, comp))
+            sb.Append("        ").Append(hook.MethodName).Append("(src);\n");
+
+        foreach (var m in match.Mappings)
+        {
+            var pm = new PropertyMapping(
+                TargetParamName: m.TargetPropertyName,
+                SourcePropertyName: m.SourcePropertyName,
+                SourceType: m.SourceType,
+                TargetType: m.TargetType,
+                IsFlattened: m.IsFlattened);
+            var expr = ResolveExpression(pm, owningClass, comp);
+            sb.Append("        existingDst.").Append(m.TargetPropertyName).Append(" = ").Append(expr).Append(";\n");
+        }
+
+        foreach (var c in match.Constants)
+        {
+            sb.Append("        existingDst.").Append(c.TargetPropertyName).Append(" = ").Append(FormatLiteral(c.Value)).Append(";\n");
+        }
+
+        foreach (var hook in MatchingHooks(owningClass, isAfter: true, srcType, dstType, comp))
+            sb.Append("        ").Append(hook.MethodName).Append("(src, existingDst);\n");
+
+        sb.Append("    }\n");
     }
 
     internal static System.Collections.Generic.IEnumerable<HookMethod> MatchingHooks(MapperClass cls, bool isAfter, ITypeSymbol srcType, ITypeSymbol dstType, Compilation comp)
@@ -138,7 +342,7 @@ internal static class MapEmitter
 
         // Standard conversion
         var conv = ConversionResolver.Resolve(m.SourceType, m.TargetType, comp);
-        return ConversionResolver.Apply(conv, srcExpr, m.TargetType);
+        return ConversionResolver.Apply(conv, srcExpr, m.TargetType, owningClass.Culture);
     }
 
     internal static string FlatteningOperator(PropertyMapping m) =>
