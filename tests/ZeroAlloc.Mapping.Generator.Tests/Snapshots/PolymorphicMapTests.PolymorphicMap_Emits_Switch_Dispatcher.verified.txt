@@ -12,6 +12,35 @@ partial class M
         );
         return __dst;
     }
+    public static global::System.Collections.Generic.List<global::CatDto> Map(global::System.Collections.Generic.List<global::Cat> src)
+    {
+        global::System.ArgumentNullException.ThrowIfNull(src);
+        var __dst = new global::System.Collections.Generic.List<global::CatDto>(src.Count);
+        for (int i = 0; i < src.Count; i++)
+            __dst.Add(Map(src[i]));
+        return __dst;
+    }
+    public static global::CatDto[] Map(global::Cat[] src)
+    {
+        global::System.ArgumentNullException.ThrowIfNull(src);
+        var __dst = new global::CatDto[src.Length];
+        for (int i = 0; i < src.Length; i++)
+            __dst[i] = Map(src[i]);
+        return __dst;
+    }
+    public static global::System.Collections.Generic.IEnumerable<global::CatDto> Map(global::System.Collections.Generic.IEnumerable<global::Cat> src)
+    {
+        global::System.ArgumentNullException.ThrowIfNull(src);
+        return global::System.Linq.Enumerable.Select(src, static x => Map(x));
+    }
+    public static global::System.Collections.Generic.IReadOnlyList<global::CatDto> Map(global::System.Collections.Generic.IReadOnlyList<global::Cat> src)
+    {
+        global::System.ArgumentNullException.ThrowIfNull(src);
+        var __dst = new global::CatDto[src.Count];
+        for (int i = 0; i < src.Count; i++)
+            __dst[i] = Map(src[i]);
+        return __dst;
+    }
     public static global::DogDto Map(global::Dog src)
     {
         global::System.ArgumentNullException.ThrowIfNull(src);
@@ -19,6 +48,35 @@ partial class M
             Name: src.Name,
             Breed: src.Breed
         );
+        return __dst;
+    }
+    public static global::System.Collections.Generic.List<global::DogDto> Map(global::System.Collections.Generic.List<global::Dog> src)
+    {
+        global::System.ArgumentNullException.ThrowIfNull(src);
+        var __dst = new global::System.Collections.Generic.List<global::DogDto>(src.Count);
+        for (int i = 0; i < src.Count; i++)
+            __dst.Add(Map(src[i]));
+        return __dst;
+    }
+    public static global::DogDto[] Map(global::Dog[] src)
+    {
+        global::System.ArgumentNullException.ThrowIfNull(src);
+        var __dst = new global::DogDto[src.Length];
+        for (int i = 0; i < src.Length; i++)
+            __dst[i] = Map(src[i]);
+        return __dst;
+    }
+    public static global::System.Collections.Generic.IEnumerable<global::DogDto> Map(global::System.Collections.Generic.IEnumerable<global::Dog> src)
+    {
+        global::System.ArgumentNullException.ThrowIfNull(src);
+        return global::System.Linq.Enumerable.Select(src, static x => Map(x));
+    }
+    public static global::System.Collections.Generic.IReadOnlyList<global::DogDto> Map(global::System.Collections.Generic.IReadOnlyList<global::Dog> src)
+    {
+        global::System.ArgumentNullException.ThrowIfNull(src);
+        var __dst = new global::DogDto[src.Count];
+        for (int i = 0; i < src.Count; i++)
+            __dst[i] = Map(src[i]);
         return __dst;
     }
     public static global::AnimalDto Map(global::Animal src)
@@ -30,5 +88,34 @@ partial class M
             global::Dog __1 => Map(__1),
             _ => throw new global::System.InvalidOperationException("No polymorphic mapping for runtime type " + src.GetType().FullName)
         };
+    }
+    public static global::System.Collections.Generic.List<global::AnimalDto> Map(global::System.Collections.Generic.List<global::Animal> src)
+    {
+        global::System.ArgumentNullException.ThrowIfNull(src);
+        var __dst = new global::System.Collections.Generic.List<global::AnimalDto>(src.Count);
+        for (int i = 0; i < src.Count; i++)
+            __dst.Add(Map(src[i]));
+        return __dst;
+    }
+    public static global::AnimalDto[] Map(global::Animal[] src)
+    {
+        global::System.ArgumentNullException.ThrowIfNull(src);
+        var __dst = new global::AnimalDto[src.Length];
+        for (int i = 0; i < src.Length; i++)
+            __dst[i] = Map(src[i]);
+        return __dst;
+    }
+    public static global::System.Collections.Generic.IEnumerable<global::AnimalDto> Map(global::System.Collections.Generic.IEnumerable<global::Animal> src)
+    {
+        global::System.ArgumentNullException.ThrowIfNull(src);
+        return global::System.Linq.Enumerable.Select(src, static x => Map(x));
+    }
+    public static global::System.Collections.Generic.IReadOnlyList<global::AnimalDto> Map(global::System.Collections.Generic.IReadOnlyList<global::Animal> src)
+    {
+        global::System.ArgumentNullException.ThrowIfNull(src);
+        var __dst = new global::AnimalDto[src.Count];
+        for (int i = 0; i < src.Count; i++)
+            __dst[i] = Map(src[i]);
+        return __dst;
     }
 }

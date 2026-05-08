@@ -42,6 +42,12 @@ internal static class MapEmitter
                     EmitUpdateInPlaceMethod(sb, decl, inPlace, cls, comp, src, dst);
                 }
             }
+
+            // Auto-emit collection overloads for [Map] decls (Task 3).
+            if (decl.Kind == MappingKind.Map && !cls.SkipCollectionOverloads)
+            {
+                EmitCollectionOverloads(sb, decl.SourceTypeFqn, decl.DestinationTypeFqn);
+            }
         }
 
         // Polymorphic dispatchers (one per [PolymorphicMap<,>] / [PolymorphicTryMap<,>]).
@@ -52,9 +58,17 @@ internal static class MapEmitter
                 var matchingCases = FilterMatchingCases(cls, poly);
                 if (matchingCases.Count == 0) continue;
                 if (poly.Kind == MappingKind.Map)
+                {
                     EmitPolymorphicDispatcher(sb, poly, matchingCases);
+                    if (!cls.SkipCollectionOverloads)
+                    {
+                        EmitCollectionOverloads(sb, poly.BaseTypeFqn, poly.BaseDestinationTypeFqn);
+                    }
+                }
                 else
+                {
                     TryMapEmitter.EmitPolymorphicTryDispatcher(sb, poly, matchingCases);
+                }
             }
         }
 
@@ -101,6 +115,41 @@ internal static class MapEmitter
         }
         sb.Append("            _ => throw new global::System.InvalidOperationException(\"No polymorphic mapping for runtime type \" + src.GetType().FullName)\n");
         sb.Append("        };\n    }\n");
+    }
+
+    internal static void EmitCollectionOverloads(StringBuilder sb, string srcFqn, string dstFqn)
+    {
+        // List<TSrc> -> List<TDst>
+        sb.Append("    public static global::System.Collections.Generic.List<").Append(dstFqn)
+          .Append("> Map(global::System.Collections.Generic.List<").Append(srcFqn).Append("> src)\n    {\n");
+        sb.Append("        global::System.ArgumentNullException.ThrowIfNull(src);\n");
+        sb.Append("        var __dst = new global::System.Collections.Generic.List<").Append(dstFqn).Append(">(src.Count);\n");
+        sb.Append("        for (int i = 0; i < src.Count; i++)\n");
+        sb.Append("            __dst.Add(Map(src[i]));\n");
+        sb.Append("        return __dst;\n    }\n");
+
+        // TSrc[] -> TDst[]
+        sb.Append("    public static ").Append(dstFqn).Append("[] Map(").Append(srcFqn).Append("[] src)\n    {\n");
+        sb.Append("        global::System.ArgumentNullException.ThrowIfNull(src);\n");
+        sb.Append("        var __dst = new ").Append(dstFqn).Append("[src.Length];\n");
+        sb.Append("        for (int i = 0; i < src.Length; i++)\n");
+        sb.Append("            __dst[i] = Map(src[i]);\n");
+        sb.Append("        return __dst;\n    }\n");
+
+        // IEnumerable<TSrc> -> IEnumerable<TDst>
+        sb.Append("    public static global::System.Collections.Generic.IEnumerable<").Append(dstFqn)
+          .Append("> Map(global::System.Collections.Generic.IEnumerable<").Append(srcFqn).Append("> src)\n    {\n");
+        sb.Append("        global::System.ArgumentNullException.ThrowIfNull(src);\n");
+        sb.Append("        return global::System.Linq.Enumerable.Select(src, static x => Map(x));\n    }\n");
+
+        // IReadOnlyList<TSrc> -> IReadOnlyList<TDst>
+        sb.Append("    public static global::System.Collections.Generic.IReadOnlyList<").Append(dstFqn)
+          .Append("> Map(global::System.Collections.Generic.IReadOnlyList<").Append(srcFqn).Append("> src)\n    {\n");
+        sb.Append("        global::System.ArgumentNullException.ThrowIfNull(src);\n");
+        sb.Append("        var __dst = new ").Append(dstFqn).Append("[src.Count];\n");
+        sb.Append("        for (int i = 0; i < src.Count; i++)\n");
+        sb.Append("            __dst[i] = Map(src[i]);\n");
+        sb.Append("        return __dst;\n    }\n");
     }
 
     private static void EmitMapMethod(StringBuilder sb, MappingDecl decl, MatchResult match, MapperClass owningClass, Compilation comp, ITypeSymbol srcType, ITypeSymbol dstType)
