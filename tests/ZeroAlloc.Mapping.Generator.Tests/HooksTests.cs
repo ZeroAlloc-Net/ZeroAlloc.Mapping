@@ -94,4 +94,21 @@ public class HooksTests
             """;
         return Verifier.Verify(TestHarness.RunGenerator(source)).UseDirectory("Snapshots");
     }
+
+    [Fact]
+    public Task TryMap_BeforeMapHook_Exception_Yields_HookErrorCode()
+    {
+        var source = """
+            using ZeroAlloc.Mapping;
+            public sealed record Src(int Id);
+            public sealed record Dst(int Id);
+            [TryMap<Src, Dst>]
+            public static partial class M
+            {
+                [BeforeMap]
+                public static void Validate(Src src) { }
+            }
+            """;
+        return Verifier.Verify(TestHarness.RunGenerator(source)).UseDirectory("Snapshots");
+    }
 }
