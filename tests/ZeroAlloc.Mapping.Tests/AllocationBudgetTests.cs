@@ -51,6 +51,43 @@ public static partial class BudgetFlattenFixtures
     public static partial BudgetFlat Map(BudgetOuter src);
 }
 
+// Sibling fixture: update-in-place void overload (B5).
+public sealed class BudgetUpdateDst
+{
+    public int Id { get; set; }
+    public string Notes { get; set; } = "";
+}
+public sealed record BudgetUpdateSrc(int Id, string Notes);
+
+[Map<BudgetUpdateSrc, BudgetUpdateDst>]
+public static partial class BudgetUpdateFixtures
+{
+    public static partial void Map(BudgetUpdateSrc src, BudgetUpdateDst existingDst);
+}
+
+// Sibling fixture: culture-aware parsing (B9).
+public sealed record BudgetCultureSrc(string Amount);
+public sealed record BudgetCultureDst(decimal Amount);
+
+[Map<BudgetCultureSrc, BudgetCultureDst>]
+[MappingCulture("nl-NL")]
+public static partial class BudgetCultureFixtures { }
+
+// Sibling fixture: polymorphic dispatch (B2). Derived types redeclare their
+// own primary-ctor parameter (no base-record inheritance) so the generator's
+// declared-only member scan picks up the property on each derived DTO.
+public abstract record BudgetAnimal;
+public sealed record BudgetCat(string Name) : BudgetAnimal;
+public sealed record BudgetDog(string Name) : BudgetAnimal;
+public abstract record BudgetAnimalDto;
+public sealed record BudgetCatDto(string Name) : BudgetAnimalDto;
+public sealed record BudgetDogDto(string Name) : BudgetAnimalDto;
+
+[Map<BudgetCat, BudgetCatDto>]
+[Map<BudgetDog, BudgetDogDto>]
+[PolymorphicMap<BudgetAnimal, BudgetAnimalDto>]
+public static partial class BudgetPolymorphicFixtures { }
+
 public class AllocationBudgetTests
 {
     // ---- 3 self-tests of the gate ----
@@ -146,5 +183,35 @@ public class AllocationBudgetTests
     {
         var outer = new BudgetOuter(new BudgetInner(42));
         AllocationGate.AssertBudget(80, 1000, () => _ = BudgetFlattenFixtures.Map(outer), "[MapProperty] flatten");
+    }
+
+    // ---- 3 v1.2-extension feature budgets ----
+
+    [Fact]
+    public void Map_UpdateInPlace_WithinBudget()
+    {
+        var src = new BudgetUpdateSrc(1, "n");
+        var dst = new BudgetUpdateDst { Id = 0, Notes = "" };
+        AllocationGate.AssertBudget(80, 1000, () => BudgetUpdateFixtures.Map(src, dst), "[Map] update-in-place");
+    }
+
+    [Fact]
+    public void Map_With_MappingCulture_WithinBudget()
+    {
+        var src = new BudgetCultureSrc("12,34");
+        // Budget loosened from the standard 80 B/call to 256 B/call: BCL
+        // `decimal.Parse(string, IFormatProvider)` allocates ~160 B/call for the
+        // internal NumberBuffer + parse state when given a non-Invariant culture
+        // (CultureInfo.GetCultureInfo itself is cached, but the parse path is not
+        // alloc-free for `decimal`). The destination record itself is ~24 B; the
+        // remainder is BCL overhead inherent to `decimal.Parse` with a culture.
+        AllocationGate.AssertBudget(256, 1000, () => _ = BudgetCultureFixtures.Map(src), "[Map] with culture");
+    }
+
+    [Fact]
+    public void Map_Polymorphic_Dispatch_WithinBudget()
+    {
+        BudgetAnimal cat = new BudgetCat("Whiskers");
+        AllocationGate.AssertBudget(96, 1000, () => _ = BudgetPolymorphicFixtures.Map(cat), "[PolymorphicMap] dispatch");
     }
 }

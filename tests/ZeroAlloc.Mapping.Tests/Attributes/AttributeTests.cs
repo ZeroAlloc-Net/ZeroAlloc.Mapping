@@ -97,6 +97,36 @@ public class AttributeTests
         Assert.True(usage.AllowMultiple);
     }
 
+    [Fact]
+    public void MappingCultureAttribute_TargetsClass_NotMultiple_HasCultureNameProperty()
+    {
+        var attr = new MappingCultureAttribute("nl-NL");
+        Assert.Equal("nl-NL", attr.CultureName);
+
+        var usage = (System.AttributeUsageAttribute)System.Attribute.GetCustomAttribute(
+            typeof(MappingCultureAttribute), typeof(System.AttributeUsageAttribute))!;
+        Assert.Equal(System.AttributeTargets.Class, usage.ValidOn);
+        Assert.False(usage.AllowMultiple);
+    }
+
+    [Fact]
+    public void PolymorphicMapAttribute_TargetsClass_AllowsMultiple()
+    {
+        var usage = (System.AttributeUsageAttribute)System.Attribute.GetCustomAttribute(
+            typeof(PolymorphicMapAttribute<int, string>), typeof(System.AttributeUsageAttribute))!;
+        Assert.Equal(System.AttributeTargets.Class, usage.ValidOn);
+        Assert.True(usage.AllowMultiple);
+    }
+
+    [Fact]
+    public void PolymorphicTryMapAttribute_TargetsClass_AllowsMultiple()
+    {
+        var usage = (System.AttributeUsageAttribute)System.Attribute.GetCustomAttribute(
+            typeof(PolymorphicTryMapAttribute<int, string>), typeof(System.AttributeUsageAttribute))!;
+        Assert.Equal(System.AttributeTargets.Class, usage.ValidOn);
+        Assert.True(usage.AllowMultiple);
+    }
+
     [Map<int, string>]
     [TryMap<long, decimal>]
     private static partial class SampleMappings { }

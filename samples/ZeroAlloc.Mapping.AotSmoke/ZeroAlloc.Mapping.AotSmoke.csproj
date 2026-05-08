@@ -5,7 +5,10 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <PublishAot>true</PublishAot>
-    <InvariantGlobalization>true</InvariantGlobalization>
+    <!-- InvariantGlobalization disabled so the [MappingCulture("nl-NL")] smoke
+         assertion can resolve the nl-NL culture. ICU data is required at run /
+         publish time. -->
+    <InvariantGlobalization>false</InvariantGlobalization>
     <IsPackable>false</IsPackable>
     <OptimizationPreference>Size</OptimizationPreference>
     <RootNamespace>ZeroAlloc.Mapping.AotSmoke</RootNamespace>
