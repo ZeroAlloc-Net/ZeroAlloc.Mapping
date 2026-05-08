@@ -163,6 +163,19 @@ public static class Program
         var dogDto = AnimalMappings.Map(dog);
         if (catDto is not AotCatDto || dogDto is not AotDogDto)
             throw new InvalidOperationException("[PolymorphicMap] dispatched to wrong derived type");
+
+        // B8: collection overloads (auto-emitted on existing Mappings class)
+        var orders = Mappings.Map(new System.Collections.Generic.List<OrderRequest>
+        {
+            new(1, "a"),
+            new(2, "b")
+        });
+        if (orders.Count != 2 || orders[0].Id != 1 || orders[1].Id != 2)
+            throw new InvalidOperationException("[Map] List<TSrc> overload returned unexpected payload");
+
+        var orderArr = Mappings.Map(new[] { new OrderRequest(3, "c") });
+        if (orderArr.Length != 1 || orderArr[0].Id != 3)
+            throw new InvalidOperationException("[Map] TSrc[] overload returned unexpected payload");
     }
 
     private static void ExerciseAllocationGates()

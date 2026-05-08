@@ -125,4 +125,12 @@ internal static class Diagnostics
         category: Category,
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
+
+    public static readonly DiagnosticDescriptor ZAMP016_DuplicateMappingCulture = new(
+        id: "ZAMP016",
+        title: "Duplicate [MappingCulture] declarations",
+        messageFormat: "Class '{0}' declares [MappingCulture] more than once across partial parts; only the first ('{1}') is honoured",
+        category: Category,
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true);
 }

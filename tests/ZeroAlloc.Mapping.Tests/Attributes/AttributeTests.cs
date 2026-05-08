@@ -127,6 +127,15 @@ public class AttributeTests
         Assert.True(usage.AllowMultiple);
     }
 
+    [Fact]
+    public void SkipCollectionOverloadsAttribute_TargetsClass_NotMultiple()
+    {
+        var usage = (System.AttributeUsageAttribute)System.Attribute.GetCustomAttribute(
+            typeof(SkipCollectionOverloadsAttribute), typeof(System.AttributeUsageAttribute))!;
+        Assert.Equal(System.AttributeTargets.Class, usage.ValidOn);
+        Assert.False(usage.AllowMultiple);
+    }
+
     [Map<int, string>]
     [TryMap<long, decimal>]
     private static partial class SampleMappings { }

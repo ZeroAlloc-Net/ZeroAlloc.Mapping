@@ -20,4 +20,62 @@ partial class M
             return global::ZeroAlloc.Results.Result<global::Dst, global::ZeroAlloc.Mapping.MappingError>.Failure(new global::ZeroAlloc.Mapping.MappingError("mapping.constructor.threw", "(root)", ex.Message));
         }
     }
+    public static global::ZeroAlloc.Results.Result<global::System.Collections.Generic.List<global::Dst>, global::ZeroAlloc.Mapping.MappingError> TryMap(global::System.Collections.Generic.List<global::Src> src)
+    {
+        if (src is null) return global::ZeroAlloc.Results.Result<global::System.Collections.Generic.List<global::Dst>, global::ZeroAlloc.Mapping.MappingError>.Failure(new global::ZeroAlloc.Mapping.MappingError("mapping.source.null", "(root)"));
+        var __dst = new global::System.Collections.Generic.List<global::Dst>(src.Count);
+        var __failures = new global::System.Collections.Generic.List<global::ZeroAlloc.Mapping.MappingError>();
+        for (int i = 0; i < src.Count; i++)
+        {
+            var __r = TryMap(src[i]);
+            if (__r.IsSuccess) __dst.Add(__r.Value);
+            else __failures.Add(new global::ZeroAlloc.Mapping.MappingError(__r.Error.Code, "[" + i + "]" + (__r.Error.PropertyPath == "(root)" ? "" : "." + __r.Error.PropertyPath), __r.Error.Reason, __r.Error.Children));
+        }
+        if (__failures.Count > 0) return global::ZeroAlloc.Results.Result<global::System.Collections.Generic.List<global::Dst>, global::ZeroAlloc.Mapping.MappingError>.Failure(new global::ZeroAlloc.Mapping.MappingError("mapping.collection.elements_failed", "(root)", __failures.Count + " of " + src.Count + " elements failed", __failures));
+        return global::ZeroAlloc.Results.Result<global::System.Collections.Generic.List<global::Dst>, global::ZeroAlloc.Mapping.MappingError>.Success(__dst);
+    }
+    public static global::ZeroAlloc.Results.Result<global::Dst[], global::ZeroAlloc.Mapping.MappingError> TryMap(global::Src[] src)
+    {
+        if (src is null) return global::ZeroAlloc.Results.Result<global::Dst[], global::ZeroAlloc.Mapping.MappingError>.Failure(new global::ZeroAlloc.Mapping.MappingError("mapping.source.null", "(root)"));
+        var __dst = new global::Dst[src.Length];
+        var __failures = new global::System.Collections.Generic.List<global::ZeroAlloc.Mapping.MappingError>();
+        for (int i = 0; i < src.Length; i++)
+        {
+            var __r = TryMap(src[i]);
+            if (__r.IsSuccess) __dst[i] = __r.Value;
+            else __failures.Add(new global::ZeroAlloc.Mapping.MappingError(__r.Error.Code, "[" + i + "]" + (__r.Error.PropertyPath == "(root)" ? "" : "." + __r.Error.PropertyPath), __r.Error.Reason, __r.Error.Children));
+        }
+        if (__failures.Count > 0) return global::ZeroAlloc.Results.Result<global::Dst[], global::ZeroAlloc.Mapping.MappingError>.Failure(new global::ZeroAlloc.Mapping.MappingError("mapping.collection.elements_failed", "(root)", __failures.Count + " of " + src.Length + " elements failed", __failures));
+        return global::ZeroAlloc.Results.Result<global::Dst[], global::ZeroAlloc.Mapping.MappingError>.Success(__dst);
+    }
+    public static global::ZeroAlloc.Results.Result<global::System.Collections.Generic.IEnumerable<global::Dst>, global::ZeroAlloc.Mapping.MappingError> TryMap(global::System.Collections.Generic.IEnumerable<global::Src> src)
+    {
+        if (src is null) return global::ZeroAlloc.Results.Result<global::System.Collections.Generic.IEnumerable<global::Dst>, global::ZeroAlloc.Mapping.MappingError>.Failure(new global::ZeroAlloc.Mapping.MappingError("mapping.source.null", "(root)"));
+        var __dst = new global::System.Collections.Generic.List<global::Dst>();
+        var __failures = new global::System.Collections.Generic.List<global::ZeroAlloc.Mapping.MappingError>();
+        int __i = 0;
+        foreach (var __item in src)
+        {
+            var __r = TryMap(__item);
+            if (__r.IsSuccess) __dst.Add(__r.Value);
+            else __failures.Add(new global::ZeroAlloc.Mapping.MappingError(__r.Error.Code, "[" + __i + "]" + (__r.Error.PropertyPath == "(root)" ? "" : "." + __r.Error.PropertyPath), __r.Error.Reason, __r.Error.Children));
+            __i++;
+        }
+        if (__failures.Count > 0) return global::ZeroAlloc.Results.Result<global::System.Collections.Generic.IEnumerable<global::Dst>, global::ZeroAlloc.Mapping.MappingError>.Failure(new global::ZeroAlloc.Mapping.MappingError("mapping.collection.elements_failed", "(root)", __failures.Count + " of " + __i + " elements failed", __failures));
+        return global::ZeroAlloc.Results.Result<global::System.Collections.Generic.IEnumerable<global::Dst>, global::ZeroAlloc.Mapping.MappingError>.Success(__dst);
+    }
+    public static global::ZeroAlloc.Results.Result<global::System.Collections.Generic.IReadOnlyList<global::Dst>, global::ZeroAlloc.Mapping.MappingError> TryMap(global::System.Collections.Generic.IReadOnlyList<global::Src> src)
+    {
+        if (src is null) return global::ZeroAlloc.Results.Result<global::System.Collections.Generic.IReadOnlyList<global::Dst>, global::ZeroAlloc.Mapping.MappingError>.Failure(new global::ZeroAlloc.Mapping.MappingError("mapping.source.null", "(root)"));
+        var __dst = new global::Dst[src.Count];
+        var __failures = new global::System.Collections.Generic.List<global::ZeroAlloc.Mapping.MappingError>();
+        for (int i = 0; i < src.Count; i++)
+        {
+            var __r = TryMap(src[i]);
+            if (__r.IsSuccess) __dst[i] = __r.Value;
+            else __failures.Add(new global::ZeroAlloc.Mapping.MappingError(__r.Error.Code, "[" + i + "]" + (__r.Error.PropertyPath == "(root)" ? "" : "." + __r.Error.PropertyPath), __r.Error.Reason, __r.Error.Children));
+        }
+        if (__failures.Count > 0) return global::ZeroAlloc.Results.Result<global::System.Collections.Generic.IReadOnlyList<global::Dst>, global::ZeroAlloc.Mapping.MappingError>.Failure(new global::ZeroAlloc.Mapping.MappingError("mapping.collection.elements_failed", "(root)", __failures.Count + " of " + src.Count + " elements failed", __failures));
+        return global::ZeroAlloc.Results.Result<global::System.Collections.Generic.IReadOnlyList<global::Dst>, global::ZeroAlloc.Mapping.MappingError>.Success(__dst);
+    }
 }

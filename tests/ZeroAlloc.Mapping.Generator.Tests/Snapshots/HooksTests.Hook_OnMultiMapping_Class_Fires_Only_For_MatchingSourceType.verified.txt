@@ -12,12 +12,70 @@ partial class M
         );
         return __dst;
     }
+    public static global::System.Collections.Generic.List<global::B> Map(global::System.Collections.Generic.List<global::A> src)
+    {
+        global::System.ArgumentNullException.ThrowIfNull(src);
+        var __dst = new global::System.Collections.Generic.List<global::B>(src.Count);
+        for (int i = 0; i < src.Count; i++)
+            __dst.Add(Map(src[i]));
+        return __dst;
+    }
+    public static global::B[] Map(global::A[] src)
+    {
+        global::System.ArgumentNullException.ThrowIfNull(src);
+        var __dst = new global::B[src.Length];
+        for (int i = 0; i < src.Length; i++)
+            __dst[i] = Map(src[i]);
+        return __dst;
+    }
+    public static global::System.Collections.Generic.IEnumerable<global::B> Map(global::System.Collections.Generic.IEnumerable<global::A> src)
+    {
+        global::System.ArgumentNullException.ThrowIfNull(src);
+        return global::System.Linq.Enumerable.Select(src, static x => Map(x));
+    }
+    public static global::System.Collections.Generic.IReadOnlyList<global::B> Map(global::System.Collections.Generic.IReadOnlyList<global::A> src)
+    {
+        global::System.ArgumentNullException.ThrowIfNull(src);
+        var __dst = new global::B[src.Count];
+        for (int i = 0; i < src.Count; i++)
+            __dst[i] = Map(src[i]);
+        return __dst;
+    }
     public static global::Q Map(global::P src)
     {
         global::System.ArgumentNullException.ThrowIfNull(src);
         var __dst = new global::Q(
             Y: src.Y
         );
+        return __dst;
+    }
+    public static global::System.Collections.Generic.List<global::Q> Map(global::System.Collections.Generic.List<global::P> src)
+    {
+        global::System.ArgumentNullException.ThrowIfNull(src);
+        var __dst = new global::System.Collections.Generic.List<global::Q>(src.Count);
+        for (int i = 0; i < src.Count; i++)
+            __dst.Add(Map(src[i]));
+        return __dst;
+    }
+    public static global::Q[] Map(global::P[] src)
+    {
+        global::System.ArgumentNullException.ThrowIfNull(src);
+        var __dst = new global::Q[src.Length];
+        for (int i = 0; i < src.Length; i++)
+            __dst[i] = Map(src[i]);
+        return __dst;
+    }
+    public static global::System.Collections.Generic.IEnumerable<global::Q> Map(global::System.Collections.Generic.IEnumerable<global::P> src)
+    {
+        global::System.ArgumentNullException.ThrowIfNull(src);
+        return global::System.Linq.Enumerable.Select(src, static x => Map(x));
+    }
+    public static global::System.Collections.Generic.IReadOnlyList<global::Q> Map(global::System.Collections.Generic.IReadOnlyList<global::P> src)
+    {
+        global::System.ArgumentNullException.ThrowIfNull(src);
+        var __dst = new global::Q[src.Count];
+        for (int i = 0; i < src.Count; i++)
+            __dst[i] = Map(src[i]);
         return __dst;
     }
 }

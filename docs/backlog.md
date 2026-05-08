@@ -9,6 +9,11 @@ Items deferred from v1.0.0. Each entry has a **Graduation signal** that, when me
 > **Update 2026-05-08:** B5 (update-in-place), B9 (`[MappingCulture]`), B2 (polymorphic dispatch)
 > graduated into v1.2 — see [`plans/2026-05-08-mapping-v1.2-extensions-design.md`](plans/2026-05-08-mapping-v1.2-extensions-design.md).
 
+> **Update 2026-05-08:** B8 (collection overloads, pragmatic interpretation) and B15
+> (duplicate `[MappingCulture]` diagnostic) graduated into v1.3 — see
+> [`plans/2026-05-08-mapping-v1.3-extensions-design.md`](plans/2026-05-08-mapping-v1.3-extensions-design.md).
+> True open-generic mappings remain deferred (C# generic-attribute limitations).
+
 For v1 scope, see [`plans/2026-05-07-mapping-design.md`](plans/2026-05-07-mapping-design.md).
 
 ---
@@ -40,26 +45,6 @@ For v1 scope, see [`plans/2026-05-07-mapping-design.md`](plans/2026-05-07-mappin
 **Why deferred.** Encapsulation-breaking by design. Documented as out-of-scope-by-design.
 
 **Graduation signal.** Unlikely — keep on the list as a public statement of policy.
-
----
-
-## B8 — Generic mappings — `[Map<List<T>, List<U>>]` parametrized
-
-**What.** Class-level attribute parametrized by an open generic, generator emits a generic method.
-
-**Why deferred.** Generator complexity scales fast (multiple type-parameter substitution paths, constraint propagation, AOT-trim interactions).
-
-**Graduation signal.** v1's per-concrete-type emission proves insufficient — a real consumer has dozens of `List<T>` mappings differing only by `T`.
-
----
-
-## B15 — Diagnostic for duplicate `[MappingCulture]` declarations across partial-class parts
-
-**What.** `[MappingCulture]` is `AllowMultiple = false`, but a class declared in two partial-class parts can carry the attribute on each. The C# compiler does not reject this (different syntax sites), and v1.2's `MapperDiscovery` silently picks the first one via `break` and ignores the rest.
-
-**Why deferred.** Edge case unlikely to surface in real codebases. Detected during v1.2 final review (M8). Acceptable v1.2 behavior since the chosen culture is deterministic (declaration order).
-
-**Graduation signal.** Real consumer hits silent-ignore confusion, OR ZAMP016 candidate when v1.3 cleans up duplicate-attribute diagnostics across the family.
 
 ---
 

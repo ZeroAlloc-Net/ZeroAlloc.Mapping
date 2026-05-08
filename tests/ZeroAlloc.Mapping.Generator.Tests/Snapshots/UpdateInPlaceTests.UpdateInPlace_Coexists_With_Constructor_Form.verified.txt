@@ -16,4 +16,33 @@ partial class M
         global::System.ArgumentNullException.ThrowIfNull(existingDst);
         existingDst.Id = src.Id;
     }
+    public static global::System.Collections.Generic.List<global::Dst> Map(global::System.Collections.Generic.List<global::Src> src)
+    {
+        global::System.ArgumentNullException.ThrowIfNull(src);
+        var __dst = new global::System.Collections.Generic.List<global::Dst>(src.Count);
+        for (int i = 0; i < src.Count; i++)
+            __dst.Add(Map(src[i]));
+        return __dst;
+    }
+    public static global::Dst[] Map(global::Src[] src)
+    {
+        global::System.ArgumentNullException.ThrowIfNull(src);
+        var __dst = new global::Dst[src.Length];
+        for (int i = 0; i < src.Length; i++)
+            __dst[i] = Map(src[i]);
+        return __dst;
+    }
+    public static global::System.Collections.Generic.IEnumerable<global::Dst> Map(global::System.Collections.Generic.IEnumerable<global::Src> src)
+    {
+        global::System.ArgumentNullException.ThrowIfNull(src);
+        return global::System.Linq.Enumerable.Select(src, static x => Map(x));
+    }
+    public static global::System.Collections.Generic.IReadOnlyList<global::Dst> Map(global::System.Collections.Generic.IReadOnlyList<global::Src> src)
+    {
+        global::System.ArgumentNullException.ThrowIfNull(src);
+        var __dst = new global::Dst[src.Count];
+        for (int i = 0; i < src.Count; i++)
+            __dst[i] = Map(src[i]);
+        return __dst;
+    }
 }

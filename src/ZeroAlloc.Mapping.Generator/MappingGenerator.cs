@@ -65,6 +65,28 @@ public sealed class MappingGenerator : IIncrementalGenerator
 
     private static void ReportPerClassDiagnostics(SourceProductionContext spc, MapperClass cls, Compilation comp)
     {
+        // ZAMP016 — duplicate [MappingCulture] across partial parts.
+        if (cls.Culture is not null && cls.TypeSymbol is not null)
+        {
+            var cultureCount = 0;
+            foreach (var a in cls.TypeSymbol.GetAttributes())
+            {
+                if (a.AttributeClass is { Name: "MappingCultureAttribute" } ac &&
+                    ac.ContainingNamespace is { Name: "Mapping", ContainingNamespace.Name: "ZeroAlloc" })
+                {
+                    cultureCount++;
+                }
+            }
+            if (cultureCount > 1)
+            {
+                spc.ReportDiagnostic(Diagnostic.Create(
+                    Diagnostics.ZAMP016_DuplicateMappingCulture,
+                    cls.TypeSymbol.Locations.FirstOrDefault() ?? Location.None,
+                    cls.TypeSymbol.ToDisplayString(),
+                    cls.Culture));
+            }
+        }
+
         foreach (var decl in cls.Mappings)
         {
             var src = comp.GetTypeByMetadataName(StripGlobal(decl.SourceTypeFqn));
