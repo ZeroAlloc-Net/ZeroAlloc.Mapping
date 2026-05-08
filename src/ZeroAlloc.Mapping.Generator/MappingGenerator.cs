@@ -30,7 +30,10 @@ public sealed class MappingGenerator : IIncrementalGenerator
         var tryMapAttr = comp.GetTypeByMetadataName(MapperDiscovery.TryMapAttributeFqn);
         var reverseMapAttr = comp.GetTypeByMetadataName(MapperDiscovery.ReverseMapAttributeFqn);
         var reverseTryMapAttr = comp.GetTypeByMetadataName(MapperDiscovery.ReverseTryMapAttributeFqn);
-        if (mapAttr is null && tryMapAttr is null && reverseMapAttr is null && reverseTryMapAttr is null) return;
+        var polymorphicMapAttr = comp.GetTypeByMetadataName(MapperDiscovery.PolymorphicMapAttributeFqn);
+        var polymorphicTryMapAttr = comp.GetTypeByMetadataName(MapperDiscovery.PolymorphicTryMapAttributeFqn);
+        if (mapAttr is null && tryMapAttr is null && reverseMapAttr is null && reverseTryMapAttr is null
+            && polymorphicMapAttr is null && polymorphicTryMapAttr is null) return;
 
         foreach (var type in EnumerateTypes(comp.GlobalNamespace))
         {
@@ -40,7 +43,9 @@ public sealed class MappingGenerator : IIncrementalGenerator
                 return (mapAttr is not null && SymbolEqualityComparer.Default.Equals(orig, mapAttr))
                     || (tryMapAttr is not null && SymbolEqualityComparer.Default.Equals(orig, tryMapAttr))
                     || (reverseMapAttr is not null && SymbolEqualityComparer.Default.Equals(orig, reverseMapAttr))
-                    || (reverseTryMapAttr is not null && SymbolEqualityComparer.Default.Equals(orig, reverseTryMapAttr));
+                    || (reverseTryMapAttr is not null && SymbolEqualityComparer.Default.Equals(orig, reverseTryMapAttr))
+                    || (polymorphicMapAttr is not null && SymbolEqualityComparer.Default.Equals(orig, polymorphicMapAttr))
+                    || (polymorphicTryMapAttr is not null && SymbolEqualityComparer.Default.Equals(orig, polymorphicTryMapAttr));
             });
             if (!hasAny) continue;
 
@@ -309,6 +314,54 @@ public sealed class MappingGenerator : IIncrementalGenerator
                     spc.ReportDiagnostic(Diagnostic.Create(
                         Diagnostics.ZAMP008_AmbiguousConstructor,
                         decl.Location, dst.ToDisplayString()));
+                }
+            }
+        }
+
+        // ZAMP013/014/015 — polymorphic dispatcher diagnostics.
+        if (cls.PolymorphicDecls is not null)
+        {
+            foreach (var poly in cls.PolymorphicDecls)
+            {
+                var kindLabel = poly.Kind == MappingKind.Map ? "Map" : "TryMap";
+                var baseDisplay = poly.BaseTypeSymbol.ToDisplayString();
+                var baseDstDisplay = poly.BaseDestinationTypeSymbol.ToDisplayString();
+
+                // ZAMP014 — sealed base.
+                if (poly.BaseTypeSymbol.IsSealed)
+                {
+                    spc.ReportDiagnostic(Diagnostic.Create(
+                        Diagnostics.ZAMP014_PolymorphicSealedBase,
+                        poly.Location, kindLabel, baseDisplay, baseDstDisplay));
+                }
+
+                // Filter all decls assignable to the polymorphic base/destination.
+                var assignable = new System.Collections.Generic.List<MappingDecl>();
+                foreach (var decl in cls.Mappings)
+                {
+                    if (decl.SourceTypeSymbol is null || decl.DestinationTypeSymbol is null) continue;
+                    if (!MapEmitter.IsAssignableTo(decl.SourceTypeSymbol, poly.BaseTypeSymbol)) continue;
+                    if (!MapEmitter.IsAssignableTo(decl.DestinationTypeSymbol, poly.BaseDestinationTypeSymbol)) continue;
+                    assignable.Add(decl);
+                }
+
+                var matchingKind = assignable.Where(d => d.Kind == poly.Kind).ToList();
+                var mismatchKind = assignable.Where(d => d.Kind != poly.Kind).ToList();
+
+                // ZAMP013 — no matching-kind cases.
+                if (matchingKind.Count == 0)
+                {
+                    spc.ReportDiagnostic(Diagnostic.Create(
+                        Diagnostics.ZAMP013_PolymorphicNoCases,
+                        poly.Location, kindLabel, baseDisplay, baseDstDisplay));
+                }
+
+                // ZAMP015 — mixed kinds among assignable decls.
+                if (mismatchKind.Count > 0)
+                {
+                    spc.ReportDiagnostic(Diagnostic.Create(
+                        Diagnostics.ZAMP015_PolymorphicMixedKinds,
+                        poly.Location, kindLabel, baseDisplay, baseDstDisplay));
                 }
             }
         }

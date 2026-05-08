@@ -8,6 +8,8 @@ internal static class MapperDiscovery
     public const string TryMapAttributeFqn = "ZeroAlloc.Mapping.TryMapAttribute`2";
     public const string ReverseMapAttributeFqn = "ZeroAlloc.Mapping.ReverseMapAttribute`2";
     public const string ReverseTryMapAttributeFqn = "ZeroAlloc.Mapping.ReverseTryMapAttribute`2";
+    public const string PolymorphicMapAttributeFqn = "ZeroAlloc.Mapping.PolymorphicMapAttribute`2";
+    public const string PolymorphicTryMapAttributeFqn = "ZeroAlloc.Mapping.PolymorphicTryMapAttribute`2";
 
     public static System.Collections.Generic.IEnumerable<MapperClass> Discover(Compilation comp)
     {
@@ -15,17 +17,54 @@ internal static class MapperDiscovery
         var tryMapAttr = comp.GetTypeByMetadataName(TryMapAttributeFqn);
         var reverseMapAttr = comp.GetTypeByMetadataName(ReverseMapAttributeFqn);
         var reverseTryMapAttr = comp.GetTypeByMetadataName(ReverseTryMapAttributeFqn);
-        if (mapAttr is null && tryMapAttr is null && reverseMapAttr is null && reverseTryMapAttr is null) yield break;
+        var polymorphicMapAttr = comp.GetTypeByMetadataName(PolymorphicMapAttributeFqn);
+        var polymorphicTryMapAttr = comp.GetTypeByMetadataName(PolymorphicTryMapAttributeFqn);
+        if (mapAttr is null && tryMapAttr is null && reverseMapAttr is null && reverseTryMapAttr is null
+            && polymorphicMapAttr is null && polymorphicTryMapAttr is null) yield break;
 
         foreach (var type in EnumerateTypes(comp.GlobalNamespace))
         {
             if (!IsStaticPartialClass(type)) continue;
 
             var decls = new System.Collections.Generic.List<MappingDecl>();
+            var polymorphics = new System.Collections.Generic.List<PolymorphicDecl>();
             foreach (var attr in type.GetAttributes())
             {
                 var orig = attr.AttributeClass?.OriginalDefinition;
                 if (orig is null) continue;
+
+                if (polymorphicMapAttr is not null && SymbolEqualityComparer.Default.Equals(orig, polymorphicMapAttr))
+                {
+                    var polyArgs = attr.AttributeClass!.TypeArguments;
+                    if (polyArgs.Length != 2) continue;
+                    if (polyArgs[0] is INamedTypeSymbol pBase && polyArgs[1] is INamedTypeSymbol pBaseDst)
+                    {
+                        polymorphics.Add(new PolymorphicDecl(
+                            BaseTypeFqn: pBase.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
+                            BaseDestinationTypeFqn: pBaseDst.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
+                            Kind: MappingKind.Map,
+                            Location: type.Locations.FirstOrDefault() ?? Location.None,
+                            BaseTypeSymbol: pBase,
+                            BaseDestinationTypeSymbol: pBaseDst));
+                    }
+                    continue;
+                }
+                if (polymorphicTryMapAttr is not null && SymbolEqualityComparer.Default.Equals(orig, polymorphicTryMapAttr))
+                {
+                    var polyArgs = attr.AttributeClass!.TypeArguments;
+                    if (polyArgs.Length != 2) continue;
+                    if (polyArgs[0] is INamedTypeSymbol pBase && polyArgs[1] is INamedTypeSymbol pBaseDst)
+                    {
+                        polymorphics.Add(new PolymorphicDecl(
+                            BaseTypeFqn: pBase.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
+                            BaseDestinationTypeFqn: pBaseDst.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
+                            Kind: MappingKind.TryMap,
+                            Location: type.Locations.FirstOrDefault() ?? Location.None,
+                            BaseTypeSymbol: pBase,
+                            BaseDestinationTypeSymbol: pBaseDst));
+                    }
+                    continue;
+                }
 
                 if (reverseMapAttr is not null && SymbolEqualityComparer.Default.Equals(orig, reverseMapAttr))
                 {
@@ -39,14 +78,18 @@ internal static class MapperDiscovery
                         Kind: MappingKind.Map,
                         Location: type.Locations.FirstOrDefault() ?? Location.None,
                         UserPartialMethod: fwdPartial,
-                        FromReverse: true));
+                        FromReverse: true,
+                        SourceTypeSymbol: reverseTypeArgs[0] as INamedTypeSymbol,
+                        DestinationTypeSymbol: reverseTypeArgs[1] as INamedTypeSymbol));
                     decls.Add(new MappingDecl(
                         SourceTypeFqn: reverseTypeArgs[1].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
                         DestinationTypeFqn: reverseTypeArgs[0].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
                         Kind: MappingKind.Map,
                         Location: type.Locations.FirstOrDefault() ?? Location.None,
                         UserPartialMethod: revPartial,
-                        FromReverse: true));
+                        FromReverse: true,
+                        SourceTypeSymbol: reverseTypeArgs[1] as INamedTypeSymbol,
+                        DestinationTypeSymbol: reverseTypeArgs[0] as INamedTypeSymbol));
                     continue;
                 }
                 if (reverseTryMapAttr is not null && SymbolEqualityComparer.Default.Equals(orig, reverseTryMapAttr))
@@ -61,14 +104,18 @@ internal static class MapperDiscovery
                         Kind: MappingKind.TryMap,
                         Location: type.Locations.FirstOrDefault() ?? Location.None,
                         UserPartialMethod: fwdPartial,
-                        FromReverse: true));
+                        FromReverse: true,
+                        SourceTypeSymbol: reverseTypeArgs[0] as INamedTypeSymbol,
+                        DestinationTypeSymbol: reverseTypeArgs[1] as INamedTypeSymbol));
                     decls.Add(new MappingDecl(
                         SourceTypeFqn: reverseTypeArgs[1].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
                         DestinationTypeFqn: reverseTypeArgs[0].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
                         Kind: MappingKind.TryMap,
                         Location: type.Locations.FirstOrDefault() ?? Location.None,
                         UserPartialMethod: revPartial,
-                        FromReverse: true));
+                        FromReverse: true,
+                        SourceTypeSymbol: reverseTypeArgs[1] as INamedTypeSymbol,
+                        DestinationTypeSymbol: reverseTypeArgs[0] as INamedTypeSymbol));
                     continue;
                 }
 
@@ -95,10 +142,12 @@ internal static class MapperDiscovery
                     Kind: kind,
                     Location: type.Locations.FirstOrDefault() ?? Location.None,
                     UserPartialMethod: userPartial,
-                    UpdateInPlacePartial: updateInPlace));
+                    UpdateInPlacePartial: updateInPlace,
+                    SourceTypeSymbol: typeArgs[0] as INamedTypeSymbol,
+                    DestinationTypeSymbol: typeArgs[1] as INamedTypeSymbol));
             }
 
-            if (decls.Count == 0) continue;
+            if (decls.Count == 0 && polymorphics.Count == 0) continue;
 
             var caseInsensitive = type.GetAttributes().Any(a =>
                 a.AttributeClass is { Name: "CaseInsensitiveMappingAttribute" } ac &&
@@ -147,7 +196,8 @@ internal static class MapperDiscovery
                 CaseInsensitive: caseInsensitive,
                 StrictSource: strictSource,
                 Hooks: hooks,
-                Culture: culture);
+                Culture: culture,
+                PolymorphicDecls: polymorphics.Count > 0 ? polymorphics : null);
         }
     }
 

@@ -44,8 +44,63 @@ internal static class MapEmitter
             }
         }
 
+        // Polymorphic dispatchers (one per [PolymorphicMap<,>] / [PolymorphicTryMap<,>]).
+        if (cls.PolymorphicDecls is not null)
+        {
+            foreach (var poly in cls.PolymorphicDecls)
+            {
+                var matchingCases = FilterMatchingCases(cls, poly);
+                if (matchingCases.Count == 0) continue;
+                if (poly.Kind == MappingKind.Map)
+                    EmitPolymorphicDispatcher(sb, poly, matchingCases);
+                else
+                    TryMapEmitter.EmitPolymorphicTryDispatcher(sb, poly, matchingCases);
+            }
+        }
+
         sb.Append("}\n");
         return sb.ToString();
+    }
+
+    internal static System.Collections.Generic.List<MappingDecl> FilterMatchingCases(MapperClass cls, PolymorphicDecl poly)
+    {
+        var result = new System.Collections.Generic.List<MappingDecl>();
+        foreach (var decl in cls.Mappings)
+        {
+            if (decl.Kind != poly.Kind) continue;
+            if (decl.SourceTypeSymbol is null || decl.DestinationTypeSymbol is null) continue;
+            if (!IsAssignableTo(decl.SourceTypeSymbol, poly.BaseTypeSymbol)) continue;
+            if (!IsAssignableTo(decl.DestinationTypeSymbol, poly.BaseDestinationTypeSymbol)) continue;
+            result.Add(decl);
+        }
+        return result;
+    }
+
+    internal static bool IsAssignableTo(INamedTypeSymbol derived, INamedTypeSymbol baseType)
+    {
+        if (SymbolEqualityComparer.Default.Equals(derived, baseType)) return true;
+        var cursor = derived.BaseType;
+        while (cursor is not null)
+        {
+            if (SymbolEqualityComparer.Default.Equals(cursor, baseType)) return true;
+            cursor = cursor.BaseType;
+        }
+        return derived.AllInterfaces.Any(i => SymbolEqualityComparer.Default.Equals(i, baseType));
+    }
+
+    private static void EmitPolymorphicDispatcher(StringBuilder sb, PolymorphicDecl poly, System.Collections.Generic.List<MappingDecl> cases)
+    {
+        sb.Append("    public static ").Append(poly.BaseDestinationTypeFqn).Append(" Map(")
+          .Append(poly.BaseTypeFqn).Append(" src)\n    {\n");
+        sb.Append("        global::System.ArgumentNullException.ThrowIfNull(src);\n");
+        sb.Append("        return src switch\n        {\n");
+        for (int i = 0; i < cases.Count; i++)
+        {
+            var c = cases[i];
+            sb.Append("            ").Append(c.SourceTypeFqn).Append(" __").Append(i).Append(" => Map(__").Append(i).Append("),\n");
+        }
+        sb.Append("            _ => throw new global::System.InvalidOperationException(\"No polymorphic mapping for runtime type \" + src.GetType().FullName)\n");
+        sb.Append("        };\n    }\n");
     }
 
     private static void EmitMapMethod(StringBuilder sb, MappingDecl decl, MatchResult match, MapperClass owningClass, Compilation comp, ITypeSymbol srcType, ITypeSymbol dstType)

@@ -101,4 +101,28 @@ internal static class Diagnostics
         category: Category,
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
+
+    public static readonly DiagnosticDescriptor ZAMP013_PolymorphicNoCases = new(
+        id: "ZAMP013",
+        title: "[PolymorphicMap] declared with no derived cases",
+        messageFormat: "[Polymorphic{0}<{1}, {2}>] has no declared [{0}<TDerived, …>] cases on the same class — dispatcher would always throw",
+        category: Category,
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
+    public static readonly DiagnosticDescriptor ZAMP014_PolymorphicSealedBase = new(
+        id: "ZAMP014",
+        title: "[PolymorphicMap] over a sealed type is degenerate",
+        messageFormat: "[Polymorphic{0}<{1}, {2}>]: '{1}' is sealed — polymorphic dispatch is meaningless; use [{0}<,>] directly",
+        category: Category,
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true);
+
+    public static readonly DiagnosticDescriptor ZAMP015_PolymorphicMixedKinds = new(
+        id: "ZAMP015",
+        title: "[PolymorphicMap] mixes [Map] and [TryMap] derived cases",
+        messageFormat: "[Polymorphic{0}<{1}, {2}>] cases must all share kind — found mixed [Map] and [TryMap]; pick one",
+        category: Category,
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
 }

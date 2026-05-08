@@ -7,6 +7,10 @@ ZeroAlloc.Mapping.ReverseMapAttribute<TSource, TDestination>
 ZeroAlloc.Mapping.ReverseMapAttribute<TSource, TDestination>.ReverseMapAttribute() -> void
 ZeroAlloc.Mapping.ReverseTryMapAttribute<TSource, TDestination>
 ZeroAlloc.Mapping.ReverseTryMapAttribute<TSource, TDestination>.ReverseTryMapAttribute() -> void
+ZeroAlloc.Mapping.PolymorphicMapAttribute<TBase, TBaseDestination>
+ZeroAlloc.Mapping.PolymorphicMapAttribute<TBase, TBaseDestination>.PolymorphicMapAttribute() -> void
+ZeroAlloc.Mapping.PolymorphicTryMapAttribute<TBase, TBaseDestination>
+ZeroAlloc.Mapping.PolymorphicTryMapAttribute<TBase, TBaseDestination>.PolymorphicTryMapAttribute() -> void
 ZeroAlloc.Mapping.MapPropertyAttribute
 ZeroAlloc.Mapping.MapPropertyAttribute.MapPropertyAttribute(string! sourceProperty, string! targetProperty) -> void
 ZeroAlloc.Mapping.MapPropertyAttribute.SourceProperty.get -> string!

@@ -18,7 +18,8 @@ internal sealed record MapperClass(
     bool CaseInsensitive = false,
     bool StrictSource = false,
     System.Collections.Generic.IReadOnlyList<HookMethod>? Hooks = null,
-    string? Culture = null);
+    string? Culture = null,
+    System.Collections.Generic.IReadOnlyList<PolymorphicDecl>? PolymorphicDecls = null);
 
 internal sealed record MappingDecl(
     string SourceTypeFqn,
@@ -27,4 +28,14 @@ internal sealed record MappingDecl(
     Microsoft.CodeAnalysis.Location Location,
     Microsoft.CodeAnalysis.IMethodSymbol? UserPartialMethod = null,
     bool FromReverse = false,
-    Microsoft.CodeAnalysis.IMethodSymbol? UpdateInPlacePartial = null);
+    Microsoft.CodeAnalysis.IMethodSymbol? UpdateInPlacePartial = null,
+    Microsoft.CodeAnalysis.INamedTypeSymbol? SourceTypeSymbol = null,
+    Microsoft.CodeAnalysis.INamedTypeSymbol? DestinationTypeSymbol = null);
+
+internal sealed record PolymorphicDecl(
+    string BaseTypeFqn,
+    string BaseDestinationTypeFqn,
+    MappingKind Kind,
+    Microsoft.CodeAnalysis.Location Location,
+    Microsoft.CodeAnalysis.INamedTypeSymbol BaseTypeSymbol,
+    Microsoft.CodeAnalysis.INamedTypeSymbol BaseDestinationTypeSymbol);
