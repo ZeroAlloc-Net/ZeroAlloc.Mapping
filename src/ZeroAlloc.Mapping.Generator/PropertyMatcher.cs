@@ -137,7 +137,7 @@ internal static class PropertyMatcher
         return new MatchResult(ctor, mappings, constMappings, unmatched);
     }
 
-    private static (IPropertySymbol? Leaf, ITypeSymbol? LeafType) WalkDottedPath(INamedTypeSymbol root, string dottedPath)
+    internal static (IPropertySymbol? Leaf, ITypeSymbol? LeafType) WalkDottedPath(INamedTypeSymbol root, string dottedPath)
     {
         INamedTypeSymbol? cursor = root;
         IPropertySymbol? leaf = null;

@@ -273,22 +273,25 @@ public sealed class MappingGenerator : IIncrementalGenerator
             }
 
             // ZAMP012 — update-in-place void overload requested but a matched destination
-            // property has no public setter (init-only or read-only).
+            // property has no public setter (init-only or read-only). Walk the in-place
+            // matcher's results so this also fires for parameterless-ctor POCOs whose
+            // init-only properties don't appear in match.Mappings (constructor-form).
             if (decl.UpdateInPlacePartial is not null && decl.Kind == MappingKind.Map)
             {
-                foreach (var m in match.Mappings)
+                var inPlace = MapEmitter.MatchUpdateInPlace(src, dst, decl.UpdateInPlacePartial ?? decl.UserPartialMethod, cls.CaseInsensitive);
+                if (inPlace is not null)
                 {
-                    var prop = dst.GetMembers(m.TargetParamName).OfType<IPropertySymbol>()
-                        .FirstOrDefault(p => p.DeclaredAccessibility == Accessibility.Public);
-                    var settable = prop?.SetMethod is { DeclaredAccessibility: Accessibility.Public } setter && !setter.IsInitOnly;
-                    if (!settable)
+                    foreach (var m in inPlace.Mappings)
                     {
-                        spc.ReportDiagnostic(Diagnostic.Create(
-                            Diagnostics.ZAMP012_UpdateInPlace_NotSettable,
-                            decl.Location,
-                            dst.ToDisplayString(),
-                            m.TargetParamName));
-                        break;
+                        if (!m.IsSettable)
+                        {
+                            spc.ReportDiagnostic(Diagnostic.Create(
+                                Diagnostics.ZAMP012_UpdateInPlace_NotSettable,
+                                decl.Location,
+                                dst.ToDisplayString(),
+                                m.TargetPropertyName));
+                            break;
+                        }
                     }
                 }
             }

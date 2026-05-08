@@ -36,7 +36,7 @@ internal static class MapEmitter
             // Update-in-place void overload (only for [Map], gated on settable destination properties).
             if (decl.Kind == MappingKind.Map && decl.UpdateInPlacePartial is not null)
             {
-                var inPlace = MatchUpdateInPlace(src, dst, decl.UserPartialMethod, cls.CaseInsensitive);
+                var inPlace = MatchUpdateInPlace(src, dst, decl.UpdateInPlacePartial ?? decl.UserPartialMethod, cls.CaseInsensitive);
                 if (inPlace is not null && AllInPlaceDestSettable(dst, inPlace))
                 {
                     EmitUpdateInPlaceMethod(sb, decl, inPlace, cls, comp, src, dst);
@@ -86,13 +86,19 @@ internal static class MapEmitter
         sb.Append("        return __dst;\n    }\n");
     }
 
-    internal sealed record InPlaceMapping(string TargetPropertyName, string SourcePropertyName, ITypeSymbol SourceType, ITypeSymbol TargetType);
-    internal sealed record InPlaceConstant(string TargetPropertyName, object? Value, ITypeSymbol TargetType);
+    internal sealed record InPlaceMapping(
+        string TargetPropertyName,
+        string SourcePropertyName,
+        ITypeSymbol SourceType,
+        ITypeSymbol TargetType,
+        bool IsFlattened = false,
+        bool IsSettable = true);
+    internal sealed record InPlaceConstant(string TargetPropertyName, object? Value, ITypeSymbol TargetType, bool IsSettable = true);
     internal sealed record InPlaceMatch(
         System.Collections.Generic.IReadOnlyList<InPlaceMapping> Mappings,
         System.Collections.Generic.IReadOnlyList<InPlaceConstant> Constants);
 
-    private static InPlaceMatch? MatchUpdateInPlace(INamedTypeSymbol source, INamedTypeSymbol destination, IMethodSymbol? userPartial, bool caseInsensitive)
+    internal static InPlaceMatch? MatchUpdateInPlace(INamedTypeSymbol source, INamedTypeSymbol destination, IMethodSymbol? userPartial, bool caseInsensitive)
     {
         var nameComparer = caseInsensitive ? System.StringComparer.OrdinalIgnoreCase : System.StringComparer.Ordinal;
 
@@ -140,20 +146,38 @@ internal static class MapEmitter
             if (dp.DeclaredAccessibility != Accessibility.Public) continue;
             if (PropertyMatcher.IsObsolete(dp)) continue;
             if (ignoreTargets.Contains(dp.Name)) continue;
+            // Property must have any kind of setter to be a candidate (init-only is recorded
+            // as IsSettable=false so AllInPlaceDestSettable can gate body emission and ZAMP012
+            // can fire on partial-settable POCOs).
             if (dp.SetMethod is not { DeclaredAccessibility: Accessibility.Public } setter) continue;
-            if (setter.IsInitOnly) continue;
+            var isSettable = !setter.IsInitOnly;
 
             if (constants.TryGetValue(dp.Name, out var constValue))
             {
-                consts.Add(new InPlaceConstant(dp.Name, constValue, dp.Type));
+                consts.Add(new InPlaceConstant(dp.Name, constValue, dp.Type, isSettable));
                 continue;
             }
 
             var sourceName = renames.TryGetValue(dp.Name, out var rename) ? rename : dp.Name;
+
+            if (sourceName.Contains('.'))
+            {
+                var (leaf, leafType) = PropertyMatcher.WalkDottedPath(source, sourceName);
+                if (leaf is null || leafType is null) continue;
+                mappings.Add(new InPlaceMapping(
+                    TargetPropertyName: dp.Name,
+                    SourcePropertyName: sourceName,
+                    SourceType: leafType,
+                    TargetType: dp.Type,
+                    IsFlattened: true,
+                    IsSettable: isSettable));
+                continue;
+            }
+
             if (sourceProps.TryGetValue(sourceName, out var srcProp))
             {
                 if (!renames.ContainsKey(dp.Name) && PropertyMatcher.IsObsolete(srcProp)) continue;
-                mappings.Add(new InPlaceMapping(dp.Name, srcProp.Name, srcProp.Type, dp.Type));
+                mappings.Add(new InPlaceMapping(dp.Name, srcProp.Name, srcProp.Type, dp.Type, IsFlattened: false, IsSettable: isSettable));
             }
         }
 
@@ -163,9 +187,9 @@ internal static class MapEmitter
     private static bool AllInPlaceDestSettable(INamedTypeSymbol dst, InPlaceMatch match)
     {
         foreach (var m in match.Mappings)
-            if (!DestPropertyIsSettable(dst, m.TargetPropertyName)) return false;
+            if (!m.IsSettable) return false;
         foreach (var c in match.Constants)
-            if (!DestPropertyIsSettable(dst, c.TargetPropertyName)) return false;
+            if (!c.IsSettable) return false;
         return true;
     }
 
@@ -194,7 +218,8 @@ internal static class MapEmitter
                 TargetParamName: m.TargetPropertyName,
                 SourcePropertyName: m.SourcePropertyName,
                 SourceType: m.SourceType,
-                TargetType: m.TargetType);
+                TargetType: m.TargetType,
+                IsFlattened: m.IsFlattened);
             var expr = ResolveExpression(pm, owningClass, comp);
             sb.Append("        existingDst.").Append(m.TargetPropertyName).Append(" = ").Append(expr).Append(";\n");
         }
