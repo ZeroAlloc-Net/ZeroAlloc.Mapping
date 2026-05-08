@@ -52,6 +52,51 @@ public class AttributeTests
         Assert.False(usage.AllowMultiple);
     }
 
+    [Fact]
+    public void CaseInsensitiveMappingAttribute_TargetsClass_NotMultiple()
+    {
+        var usage = (System.AttributeUsageAttribute)System.Attribute.GetCustomAttribute(
+            typeof(CaseInsensitiveMappingAttribute), typeof(System.AttributeUsageAttribute))!;
+        Assert.Equal(System.AttributeTargets.Class, usage.ValidOn);
+        Assert.False(usage.AllowMultiple);
+    }
+
+    [Fact]
+    public void StrictSourceMappingAttribute_TargetsClass_NotMultiple()
+    {
+        var usage = (System.AttributeUsageAttribute)System.Attribute.GetCustomAttribute(
+            typeof(StrictSourceMappingAttribute), typeof(System.AttributeUsageAttribute))!;
+        Assert.Equal(System.AttributeTargets.Class, usage.ValidOn);
+        Assert.False(usage.AllowMultiple);
+    }
+
+    [Fact]
+    public void BeforeMapAttribute_TargetsMethod_AllowsMultiple()
+    {
+        var usage = (System.AttributeUsageAttribute)System.Attribute.GetCustomAttribute(
+            typeof(BeforeMapAttribute), typeof(System.AttributeUsageAttribute))!;
+        Assert.Equal(System.AttributeTargets.Method, usage.ValidOn);
+        Assert.True(usage.AllowMultiple);
+    }
+
+    [Fact]
+    public void AfterMapAttribute_TargetsMethod_AllowsMultiple()
+    {
+        var usage = (System.AttributeUsageAttribute)System.Attribute.GetCustomAttribute(
+            typeof(AfterMapAttribute), typeof(System.AttributeUsageAttribute))!;
+        Assert.Equal(System.AttributeTargets.Method, usage.ValidOn);
+        Assert.True(usage.AllowMultiple);
+    }
+
+    [Fact]
+    public void ReverseMapAttribute_TargetsClass_AllowsMultiple()
+    {
+        var usage = (System.AttributeUsageAttribute)System.Attribute.GetCustomAttribute(
+            typeof(ReverseMapAttribute<int, string>), typeof(System.AttributeUsageAttribute))!;
+        Assert.Equal(System.AttributeTargets.Class, usage.ValidOn);
+        Assert.True(usage.AllowMultiple);
+    }
+
     [Map<int, string>]
     [TryMap<long, decimal>]
     private static partial class SampleMappings { }
