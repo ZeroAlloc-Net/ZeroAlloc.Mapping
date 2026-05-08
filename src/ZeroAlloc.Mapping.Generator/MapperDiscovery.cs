@@ -197,7 +197,8 @@ internal static class MapperDiscovery
                 StrictSource: strictSource,
                 Hooks: hooks,
                 Culture: culture,
-                PolymorphicDecls: polymorphics.Count > 0 ? polymorphics : null);
+                PolymorphicDecls: polymorphics.Count > 0 ? polymorphics : null,
+                TypeSymbol: type);
         }
     }
 

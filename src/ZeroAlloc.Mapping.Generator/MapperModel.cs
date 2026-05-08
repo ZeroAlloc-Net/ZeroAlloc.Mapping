@@ -19,7 +19,8 @@ internal sealed record MapperClass(
     bool StrictSource = false,
     System.Collections.Generic.IReadOnlyList<HookMethod>? Hooks = null,
     string? Culture = null,
-    System.Collections.Generic.IReadOnlyList<PolymorphicDecl>? PolymorphicDecls = null);
+    System.Collections.Generic.IReadOnlyList<PolymorphicDecl>? PolymorphicDecls = null,
+    Microsoft.CodeAnalysis.INamedTypeSymbol? TypeSymbol = null);
 
 internal sealed record MappingDecl(
     string SourceTypeFqn,
