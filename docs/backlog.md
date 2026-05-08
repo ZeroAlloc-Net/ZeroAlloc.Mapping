@@ -53,6 +53,16 @@ For v1 scope, see [`plans/2026-05-07-mapping-design.md`](plans/2026-05-07-mappin
 
 ---
 
+## B15 — Diagnostic for duplicate `[MappingCulture]` declarations across partial-class parts
+
+**What.** `[MappingCulture]` is `AllowMultiple = false`, but a class declared in two partial-class parts can carry the attribute on each. The C# compiler does not reject this (different syntax sites), and v1.2's `MapperDiscovery` silently picks the first one via `break` and ignores the rest.
+
+**Why deferred.** Edge case unlikely to surface in real codebases. Detected during v1.2 final review (M8). Acceptable v1.2 behavior since the chosen culture is deterministic (declaration order).
+
+**Graduation signal.** Real consumer hits silent-ignore confusion, OR ZAMP016 candidate when v1.3 cleans up duplicate-attribute diagnostics across the family.
+
+---
+
 ## B11 — `UseDeepCloning` mode
 
 **What.** Default to deep-cloning collections and nested objects instead of shallow copy.
