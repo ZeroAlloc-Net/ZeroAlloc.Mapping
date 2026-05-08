@@ -1,5 +1,39 @@
 # Changelog
 
+## [1.2.0](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/compare/v1.1.0...v1.2.0) (2026-05-08)
+
+
+### Features
+
+* **generator:** [MappingCulture] class marker overrides InvariantCulture default ([fa09915](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/fa09915730054a8247728952f6862d7e745e3430))
+* **generator:** [PolymorphicMap&lt;,&gt;] / [PolymorphicTryMap&lt;,&gt;] dispatchers + ZAMP013/014/015 ([b311feb](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/b311febda1197fab72f9a068927f4cbbc1a2134e))
+* **generator:** update-in-place void-overload Map(TSrc, TDst) + ZAMP012 ([25fd4fc](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/25fd4fc9317b4ae4de0c9e203d5705a4ab6dfee4))
+* v1.2 — update-in-place, [MappingCulture], polymorphic dispatch ([4f12c66](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/4f12c669012814e7ac5a58af2dd3141abd51bab4))
+
+
+### Bug Fixes
+
+* **generator:** PropertyMatcher walks inheritance chain for inherited properties ([ca71366](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/ca71366c80e642f94454bd18ab89effca6fda0c7))
+* **generator:** update-in-place handles dotted flattening + mixed-settability ZAMP012 ([8c183fc](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/8c183fcd452fa442b49e87b207b3b0a89952c13e))
+
+
+### Code Refactoring
+
+* **generator:** cleanups + ZAMP015 false-positive fix from final review ([6b06f6f](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/6b06f6fea7c17923380893e536670623b8b566b3))
+
+
+### Documentation
+
+* **backlog:** B15 — duplicate [MappingCulture] across partial parts (v1.3 candidate) ([86fecf7](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/86fecf7c0f46ef9e6aa78b1247ef8d3c82bc4802))
+* **backlog:** prune items graduated into v1.2 (B2, B5, B9) ([09d6bbb](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/09d6bbbcbcde272826fe801fb070c05bf311ea33))
+* **plans:** v1.2 design — B5 update-in-place, B9 MappingCulture, B2 polymorphic ([01da16e](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/01da16e53ed90f0bc215c1deb314148d5019120b))
+* **plans:** v1.2 implementation plan — 6 tasks across 6 phases ([bf5bf8d](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/bf5bf8dce4c8eed4d82abce362d5c6875b279de8))
+
+
+### Tests
+
+* **certify:** allocation budgets + AOT smoke + reflection tests for v1.2 features ([65547bf](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/65547bffedc55a20a795d6f4f9508f72b3e04d67))
+
 ## [1.1.0](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/compare/v1.0.0...v1.1.0) (2026-05-08)
 
 
