@@ -48,6 +48,12 @@ internal static class MapEmitter
             {
                 EmitCollectionOverloads(sb, decl.SourceTypeFqn, decl.DestinationTypeFqn);
             }
+
+            // Auto-emit fallible collection overloads for [TryMap] decls (Task 4).
+            if (decl.Kind == MappingKind.TryMap && !cls.SkipCollectionOverloads)
+            {
+                TryMapEmitter.EmitTryMapCollectionOverloads(sb, decl.SourceTypeFqn, decl.DestinationTypeFqn);
+            }
         }
 
         // Polymorphic dispatchers (one per [PolymorphicMap<,>] / [PolymorphicTryMap<,>]).
@@ -68,6 +74,10 @@ internal static class MapEmitter
                 else
                 {
                     TryMapEmitter.EmitPolymorphicTryDispatcher(sb, poly, matchingCases);
+                    if (!cls.SkipCollectionOverloads)
+                    {
+                        TryMapEmitter.EmitTryMapCollectionOverloads(sb, poly.BaseTypeFqn, poly.BaseDestinationTypeFqn);
+                    }
                 }
             }
         }

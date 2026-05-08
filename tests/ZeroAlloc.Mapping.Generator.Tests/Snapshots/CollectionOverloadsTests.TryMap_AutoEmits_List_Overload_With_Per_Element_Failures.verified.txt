@@ -9,7 +9,7 @@ partial class M
         try
         {
             var __dst = new global::Dst(
-                Id: src.Id
+                X: src.X
             );
             return global::ZeroAlloc.Results.Result<global::Dst, global::ZeroAlloc.Mapping.MappingError>.Success(__dst);
         }

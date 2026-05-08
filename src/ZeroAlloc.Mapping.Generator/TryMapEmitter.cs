@@ -99,6 +99,76 @@ internal static class TryMapEmitter
         sb.Append("    }\n");
     }
 
+    internal static void EmitTryMapCollectionOverloads(StringBuilder sb, string srcFqn, string dstFqn)
+    {
+        var resultListType = "global::ZeroAlloc.Results.Result<global::System.Collections.Generic.List<" + dstFqn + ">, global::ZeroAlloc.Mapping.MappingError>";
+        var resultArrayType = "global::ZeroAlloc.Results.Result<" + dstFqn + "[], global::ZeroAlloc.Mapping.MappingError>";
+        var resultEnumType = "global::ZeroAlloc.Results.Result<global::System.Collections.Generic.IEnumerable<" + dstFqn + ">, global::ZeroAlloc.Mapping.MappingError>";
+        var resultRoListType = "global::ZeroAlloc.Results.Result<global::System.Collections.Generic.IReadOnlyList<" + dstFqn + ">, global::ZeroAlloc.Mapping.MappingError>";
+
+        EmitTryMapCollectionMaterialized(sb, resultListType, srcFqn, dstFqn,
+            srcCollection: "global::System.Collections.Generic.List<" + srcFqn + ">",
+            countMember: "Count",
+            builderInit: "var __dst = new global::System.Collections.Generic.List<" + dstFqn + ">(src.Count);",
+            appendItem: "__dst.Add(__r.Value);");
+
+        EmitTryMapCollectionMaterialized(sb, resultArrayType, srcFqn, dstFqn,
+            srcCollection: srcFqn + "[]",
+            countMember: "Length",
+            builderInit: "var __dst = new " + dstFqn + "[src.Length];",
+            appendItem: "__dst[i] = __r.Value;");
+
+        // IEnumerable<TSrc> — eager materialisation, returned as IEnumerable<TDst>.
+        EmitTryMapCollectionMaterialized(sb, resultEnumType, srcFqn, dstFqn,
+            srcCollection: "global::System.Collections.Generic.IEnumerable<" + srcFqn + ">",
+            countMember: null,
+            builderInit: "var __dst = new global::System.Collections.Generic.List<" + dstFqn + ">();",
+            appendItem: "__dst.Add(__r.Value);");
+
+        EmitTryMapCollectionMaterialized(sb, resultRoListType, srcFqn, dstFqn,
+            srcCollection: "global::System.Collections.Generic.IReadOnlyList<" + srcFqn + ">",
+            countMember: "Count",
+            builderInit: "var __dst = new " + dstFqn + "[src.Count];",
+            appendItem: "__dst[i] = __r.Value;");
+    }
+
+    private static void EmitTryMapCollectionMaterialized(
+        StringBuilder sb, string resultType, string srcFqn, string dstFqn,
+        string srcCollection, string? countMember, string builderInit, string appendItem)
+    {
+        sb.Append("    public static ").Append(resultType).Append(" TryMap(").Append(srcCollection).Append(" src)\n    {\n");
+        sb.Append("        if (src is null) return ").Append(resultType)
+          .Append(".Failure(new global::ZeroAlloc.Mapping.MappingError(\"mapping.source.null\", \"(root)\"));\n");
+        sb.Append("        ").Append(builderInit).Append("\n");
+        sb.Append("        var __failures = new global::System.Collections.Generic.List<global::ZeroAlloc.Mapping.MappingError>();\n");
+
+        if (countMember is not null)
+        {
+            sb.Append("        for (int i = 0; i < src.").Append(countMember).Append("; i++)\n        {\n");
+            sb.Append("            var __r = TryMap(src[i]);\n");
+            sb.Append("            if (__r.IsSuccess) ").Append(appendItem).Append("\n");
+            sb.Append("            else __failures.Add(new global::ZeroAlloc.Mapping.MappingError(__r.Error.Code, \"[\" + i + \"]\" + (__r.Error.PropertyPath == \"(root)\" ? \"\" : \".\" + __r.Error.PropertyPath), __r.Error.Reason, __r.Error.Children));\n");
+            sb.Append("        }\n");
+        }
+        else
+        {
+            sb.Append("        int __i = 0;\n");
+            sb.Append("        foreach (var __item in src)\n        {\n");
+            sb.Append("            var __r = TryMap(__item);\n");
+            sb.Append("            if (__r.IsSuccess) ").Append(appendItem).Append("\n");
+            sb.Append("            else __failures.Add(new global::ZeroAlloc.Mapping.MappingError(__r.Error.Code, \"[\" + __i + \"]\" + (__r.Error.PropertyPath == \"(root)\" ? \"\" : \".\" + __r.Error.PropertyPath), __r.Error.Reason, __r.Error.Children));\n");
+            sb.Append("            __i++;\n");
+            sb.Append("        }\n");
+        }
+
+        sb.Append("        if (__failures.Count > 0) return ").Append(resultType)
+          .Append(".Failure(new global::ZeroAlloc.Mapping.MappingError(\"mapping.collection.elements_failed\", \"(root)\", __failures.Count + \" of \" + ");
+        sb.Append(countMember is not null ? "src." + countMember : "__i");
+        sb.Append(" + \" elements failed\", __failures));\n");
+        sb.Append("        return ").Append(resultType).Append(".Success(__dst);\n");
+        sb.Append("    }\n");
+    }
+
     private static string FormatLiteral(object? value) => value switch
     {
         null => "null",

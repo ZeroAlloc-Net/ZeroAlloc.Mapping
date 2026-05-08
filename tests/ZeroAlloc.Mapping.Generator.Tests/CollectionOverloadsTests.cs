@@ -50,4 +50,32 @@ public class CollectionOverloadsTests
             """;
         return Verifier.Verify(TestHarness.RunGenerator(source)).UseDirectory("Snapshots");
     }
+
+    [Fact]
+    public Task TryMap_AutoEmits_List_Overload_With_Per_Element_Failures()
+    {
+        var source = """
+            using ZeroAlloc.Mapping;
+            public sealed record Src(int X);
+            public sealed record Dst(int X);
+            [TryMap<Src, Dst>]
+            public static partial class M { }
+            """;
+        return Verifier.Verify(TestHarness.RunGenerator(source)).UseDirectory("Snapshots");
+    }
+
+    [Fact]
+    public void SkipCollectionOverloads_Applies_To_TryMap_Too()
+    {
+        var source = """
+            using ZeroAlloc.Mapping;
+            public sealed record Src(int X);
+            public sealed record Dst(int X);
+            [TryMap<Src, Dst>]
+            [SkipCollectionOverloads]
+            public static partial class M { }
+            """;
+        var output = TestHarness.RunGenerator(source);
+        Assert.DoesNotContain("List<", output, StringComparison.Ordinal);   // crude but effective
+    }
 }
