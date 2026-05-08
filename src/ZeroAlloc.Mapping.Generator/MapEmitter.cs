@@ -158,9 +158,8 @@ internal static class MapEmitter
         var nameComparer = caseInsensitive ? System.StringComparer.OrdinalIgnoreCase : System.StringComparer.Ordinal;
 
         var sourceProps = new System.Collections.Generic.Dictionary<string, IPropertySymbol>(nameComparer);
-        foreach (var p in source.GetMembers().OfType<IPropertySymbol>())
+        foreach (var p in PropertyMatcher.GetAllPublicProperties(source))
         {
-            if (p.DeclaredAccessibility != Accessibility.Public) continue;
             sourceProps[p.Name] = p;
         }
 
@@ -196,9 +195,8 @@ internal static class MapEmitter
         var mappings = new System.Collections.Generic.List<InPlaceMapping>();
         var consts = new System.Collections.Generic.List<InPlaceConstant>();
 
-        foreach (var dp in destination.GetMembers().OfType<IPropertySymbol>())
+        foreach (var dp in PropertyMatcher.GetAllPublicProperties(destination))
         {
-            if (dp.DeclaredAccessibility != Accessibility.Public) continue;
             if (PropertyMatcher.IsObsolete(dp)) continue;
             if (ignoreTargets.Contains(dp.Name)) continue;
             // Property must have any kind of setter to be a candidate (init-only is recorded

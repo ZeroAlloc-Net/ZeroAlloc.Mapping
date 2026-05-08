@@ -8,6 +8,7 @@ partial class M
         global::System.ArgumentNullException.ThrowIfNull(src);
         OnBase(src);
         var __dst = new global::Dst(
+            Id: src.Id
         );
         return __dst;
     }

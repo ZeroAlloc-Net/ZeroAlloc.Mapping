@@ -7,6 +7,7 @@ partial class M
     {
         global::System.ArgumentNullException.ThrowIfNull(src);
         var __dst = new global::CatDto(
+            Name: src.Name
         );
         return __dst;
     }

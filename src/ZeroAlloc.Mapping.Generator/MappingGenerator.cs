@@ -98,8 +98,7 @@ public sealed class MappingGenerator : IIncrementalGenerator
             // collide case-insensitively and the destination has a constructor param matching them.
             if (cls.CaseInsensitive)
             {
-                var grouped = src.GetMembers().OfType<IPropertySymbol>()
-                    .Where(p => p.DeclaredAccessibility == Accessibility.Public)
+                var grouped = PropertyMatcher.GetAllPublicProperties(src)
                     .Where(p => !PropertyMatcher.IsObsolete(p))
                     .GroupBy(p => p.Name, System.StringComparer.OrdinalIgnoreCase)
                     .Where(g => g.Count() > 1);
@@ -182,9 +181,7 @@ public sealed class MappingGenerator : IIncrementalGenerator
             if (decl.UserPartialMethod is not null)
             {
                 var sourceProps = new System.Collections.Generic.HashSet<string>(
-                    src.GetMembers().OfType<IPropertySymbol>()
-                        .Where(p => p.DeclaredAccessibility == Accessibility.Public)
-                        .Select(p => p.Name),
+                    PropertyMatcher.GetAllPublicProperties(src).Select(p => p.Name),
                     System.StringComparer.Ordinal);
                 var ctorParams = new System.Collections.Generic.HashSet<string>(
                     match.Constructor.Parameters.Select(p => p.Name),
@@ -204,8 +201,8 @@ public sealed class MappingGenerator : IIncrementalGenerator
                                 foreach (var segment in srcName.Split('.'))
                                 {
                                     if (cursor is null) break;
-                                    var found = cursor.GetMembers(segment).OfType<IPropertySymbol>()
-                                        .FirstOrDefault(p => p.DeclaredAccessibility == Accessibility.Public);
+                                    var found = PropertyMatcher.GetAllPublicProperties(cursor)
+                                        .FirstOrDefault(p => p.Name == segment);
                                     if (found is null)
                                     {
                                         spc.ReportDiagnostic(Diagnostic.Create(
@@ -244,7 +241,7 @@ public sealed class MappingGenerator : IIncrementalGenerator
                 var ctorParamNames = new System.Collections.Generic.HashSet<string>(
                     match.Constructor.Parameters.Select(p => p.Name), System.StringComparer.Ordinal);
                 var sourcePropSet = new System.Collections.Generic.HashSet<string>(
-                    src.GetMembers().OfType<IPropertySymbol>().Select(p => p.Name), System.StringComparer.Ordinal);
+                    PropertyMatcher.GetAllPublicProperties(src).Select(p => p.Name), System.StringComparer.Ordinal);
 
                 foreach (var rename in renames)
                 {
@@ -263,7 +260,7 @@ public sealed class MappingGenerator : IIncrementalGenerator
             {
                 var consumed = new System.Collections.Generic.HashSet<string>(
                     match.Mappings.Select(m => m.SourcePropertyName), System.StringComparer.Ordinal);
-                foreach (var p in src.GetMembers().OfType<IPropertySymbol>().Where(p => p.DeclaredAccessibility == Accessibility.Public))
+                foreach (var p in PropertyMatcher.GetAllPublicProperties(src))
                 {
                     if (consumed.Contains(p.Name)) continue;
                     if (PropertyMatcher.IsObsolete(p)) continue;

@@ -27,6 +27,30 @@ internal static class PropertyMatcher
             a.AttributeClass is { Name: "ObsoleteAttribute" } ac &&
             ac.ContainingNamespace is { Name: "System", ContainingNamespace.IsGlobalNamespace: true });
 
+    /// <summary>
+    /// Walks the inheritance chain and yields all public properties declared on the type
+    /// itself or any base type. Required for primary-ctor record forwarding shapes like
+    /// <c>record Cat(string Name, int Lives) : Animal(Name)</c>, where <c>Name</c> is
+    /// declared on <c>Animal</c> and would otherwise be missed by a declared-only
+    /// <c>GetMembers()</c> scan. First-wins on name collisions (the most-derived override
+    /// is kept; comparison is ordinal, matching the C# language rules).
+    /// </summary>
+    internal static System.Collections.Generic.IEnumerable<IPropertySymbol> GetAllPublicProperties(INamedTypeSymbol type)
+    {
+        var seen = new System.Collections.Generic.HashSet<string>(System.StringComparer.Ordinal);
+        var cursor = type;
+        while (cursor is not null)
+        {
+            foreach (var p in cursor.GetMembers().OfType<IPropertySymbol>())
+            {
+                if (p.DeclaredAccessibility != Accessibility.Public) continue;
+                if (seen.Add(p.Name))
+                    yield return p;
+            }
+            cursor = cursor.BaseType;
+        }
+    }
+
     public static MatchResult? Match(INamedTypeSymbol source, INamedTypeSymbol destination, IMethodSymbol? userPartial = null, bool caseInsensitive = false)
     {
         var ctor = PickConstructor(destination);
@@ -35,9 +59,8 @@ internal static class PropertyMatcher
         var nameComparer = caseInsensitive ? System.StringComparer.OrdinalIgnoreCase : System.StringComparer.Ordinal;
 
         var sourceProps = new System.Collections.Generic.Dictionary<string, IPropertySymbol>(nameComparer);
-        foreach (var p in source.GetMembers().OfType<IPropertySymbol>())
+        foreach (var p in GetAllPublicProperties(source))
         {
-            if (p.DeclaredAccessibility != Accessibility.Public) continue;
             // Note: [Obsolete] source props are kept in the dictionary so explicit
             // [MapProperty] renames can target them (explicit beats auto-skip). The
             // auto-match path below rejects obsolete sources unless an explicit rename
@@ -48,9 +71,8 @@ internal static class PropertyMatcher
         }
 
         var destProps = new System.Collections.Generic.Dictionary<string, IPropertySymbol>(nameComparer);
-        foreach (var p in destination.GetMembers().OfType<IPropertySymbol>())
+        foreach (var p in GetAllPublicProperties(destination))
         {
-            if (p.DeclaredAccessibility != Accessibility.Public) continue;
             destProps[p.Name] = p;
         }
 
@@ -144,8 +166,9 @@ internal static class PropertyMatcher
         foreach (var segment in dottedPath.Split('.'))
         {
             if (cursor is null) return (null, null);
-            leaf = cursor.GetMembers(segment).OfType<IPropertySymbol>()
-                .FirstOrDefault(p => p.DeclaredAccessibility == Accessibility.Public);
+            // Walk inheritance chain at each segment so dotted paths can land on
+            // properties declared on a base type (records using primary-ctor forwarding).
+            leaf = GetAllPublicProperties(cursor).FirstOrDefault(p => p.Name == segment);
             if (leaf is null) return (null, null);
             cursor = leaf.Type as INamedTypeSymbol;
         }

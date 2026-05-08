@@ -9,6 +9,7 @@ partial class M
         try
         {
             var __dst = new global::CatDto(
+                Name: src.Name
             );
             return global::ZeroAlloc.Results.Result<global::CatDto, global::ZeroAlloc.Mapping.MappingError>.Success(__dst);
         }
@@ -23,6 +24,7 @@ partial class M
         try
         {
             var __dst = new global::DogDto(
+                Name: src.Name
             );
             return global::ZeroAlloc.Results.Result<global::DogDto, global::ZeroAlloc.Mapping.MappingError>.Success(__dst);
         }
