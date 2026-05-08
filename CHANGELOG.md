@@ -1,5 +1,33 @@
 # Changelog
 
+## [1.3.0](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/compare/v1.2.0...v1.3.0) (2026-05-08)
+
+
+### Features
+
+* **generator:** auto-emit 4 collection overloads per [Map&lt;,&gt;] ([9803d71](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/9803d7154ddd452070388ac40f49dd7b3435c3be))
+* **generator:** auto-emit 4 fallible collection overloads per [TryMap&lt;,&gt;] ([65c6c13](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/65c6c13447dbf7b3d9bad5b8c2245c219e9279a2))
+* **generator:** ZAMP016 detects duplicate [MappingCulture] across partial parts ([d7f5b11](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/d7f5b1153610bc9b452f5f068002382c50a7108a))
+* **runtime:** [SkipCollectionOverloads] opt-out marker + model wiring ([117879d](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/117879df754cf849f602ea591751ba326eacd814))
+* v1.3 — auto-collection overloads + ZAMP016 ([0a10cd9](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/0a10cd9ac6df5c1e330b86cd04aa54c6f87e77dd))
+
+
+### Bug Fixes
+
+* **generator:** polymorphic-pair guard + tighten TryMap skip-overloads test ([c32a960](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/c32a9602eb46893fdb67c50e226d09de69571eb1))
+
+
+### Documentation
+
+* **backlog:** prune items graduated into v1.3 (B8, B15) ([f89014b](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/f89014bd58381329c3cff3392588878514722145))
+* **plans:** v1.3 design — B8 auto-collection overloads + B15 ZAMP016 ([3c674cf](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/3c674cfbc9d9bf3f86c790062a944fb2e7fd428e))
+* **plans:** v1.3 implementation plan — 7 tasks across 4 phases ([3359c3a](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/3359c3ab69761edfc316484e17453bc05a4d4618))
+
+
+### Tests
+
+* **certify:** allocation budgets + AOT smoke for v1.3 collection overloads ([2f1024a](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/2f1024a9c0493ecdd72af171f17d959f006bfa7b))
+
 ## [1.2.0](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/compare/v1.1.0...v1.2.0) (2026-05-08)
 
 
