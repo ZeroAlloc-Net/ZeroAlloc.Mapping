@@ -93,4 +93,12 @@ internal static class Diagnostics
         category: Category,
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
+
+    public static readonly DiagnosticDescriptor ZAMP012_UpdateInPlace_NotSettable = new(
+        id: "ZAMP012",
+        title: "Destination type cannot be updated in place",
+        messageFormat: "Update-in-place mapping for '{0}' fails because property '{1}' has no public setter — use [Map] constructor form, expose a settable property, or apply [MapperIgnoreTarget]",
+        category: Category,
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
 }

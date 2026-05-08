@@ -272,6 +272,27 @@ public sealed class MappingGenerator : IIncrementalGenerator
                 }
             }
 
+            // ZAMP012 — update-in-place void overload requested but a matched destination
+            // property has no public setter (init-only or read-only).
+            if (decl.UpdateInPlacePartial is not null && decl.Kind == MappingKind.Map)
+            {
+                foreach (var m in match.Mappings)
+                {
+                    var prop = dst.GetMembers(m.TargetParamName).OfType<IPropertySymbol>()
+                        .FirstOrDefault(p => p.DeclaredAccessibility == Accessibility.Public);
+                    var settable = prop?.SetMethod is { DeclaredAccessibility: Accessibility.Public } setter && !setter.IsInitOnly;
+                    if (!settable)
+                    {
+                        spc.ReportDiagnostic(Diagnostic.Create(
+                            Diagnostics.ZAMP012_UpdateInPlace_NotSettable,
+                            decl.Location,
+                            dst.ToDisplayString(),
+                            m.TargetParamName));
+                        break;
+                    }
+                }
+            }
+
             // ZAMP008 — multiple non-copy public ctors with equal arity.
             if (dst is INamedTypeSymbol nt)
             {

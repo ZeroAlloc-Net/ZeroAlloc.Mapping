@@ -32,6 +32,16 @@ internal static class MapEmitter
                 TryMapEmitter.EmitTryMapMethod(sb, decl, match, cls, comp, src, dst);
             else
                 EmitMapMethod(sb, decl, match, cls, comp, src, dst);
+
+            // Update-in-place void overload (only for [Map], gated on settable destination properties).
+            if (decl.Kind == MappingKind.Map && decl.UpdateInPlacePartial is not null)
+            {
+                var inPlace = MatchUpdateInPlace(src, dst, decl.UserPartialMethod, cls.CaseInsensitive);
+                if (inPlace is not null && AllInPlaceDestSettable(dst, inPlace))
+                {
+                    EmitUpdateInPlaceMethod(sb, decl, inPlace, cls, comp, src, dst);
+                }
+            }
         }
 
         sb.Append("}\n");
@@ -74,6 +84,130 @@ internal static class MapEmitter
             sb.Append("        ").Append(hook.MethodName).Append("(src, __dst);\n");
 
         sb.Append("        return __dst;\n    }\n");
+    }
+
+    internal sealed record InPlaceMapping(string TargetPropertyName, string SourcePropertyName, ITypeSymbol SourceType, ITypeSymbol TargetType);
+    internal sealed record InPlaceConstant(string TargetPropertyName, object? Value, ITypeSymbol TargetType);
+    internal sealed record InPlaceMatch(
+        System.Collections.Generic.IReadOnlyList<InPlaceMapping> Mappings,
+        System.Collections.Generic.IReadOnlyList<InPlaceConstant> Constants);
+
+    private static InPlaceMatch? MatchUpdateInPlace(INamedTypeSymbol source, INamedTypeSymbol destination, IMethodSymbol? userPartial, bool caseInsensitive)
+    {
+        var nameComparer = caseInsensitive ? System.StringComparer.OrdinalIgnoreCase : System.StringComparer.Ordinal;
+
+        var sourceProps = new System.Collections.Generic.Dictionary<string, IPropertySymbol>(nameComparer);
+        foreach (var p in source.GetMembers().OfType<IPropertySymbol>())
+        {
+            if (p.DeclaredAccessibility != Accessibility.Public) continue;
+            sourceProps[p.Name] = p;
+        }
+
+        var renames = new System.Collections.Generic.Dictionary<string, string>(System.StringComparer.Ordinal);
+        var constants = new System.Collections.Generic.Dictionary<string, object?>(System.StringComparer.Ordinal);
+        var ignoreTargets = new System.Collections.Generic.HashSet<string>(System.StringComparer.Ordinal);
+
+        if (userPartial is not null)
+        {
+            foreach (var attr in userPartial.GetAttributes())
+            {
+                var name = attr.AttributeClass?.Name;
+                if (name == "MapPropertyAttribute" && attr.ConstructorArguments.Length == 2)
+                {
+                    var srcProp = attr.ConstructorArguments[0].Value as string;
+                    var tgtProp = attr.ConstructorArguments[1].Value as string;
+                    if (srcProp is not null && tgtProp is not null)
+                        renames[tgtProp] = srcProp;
+                }
+                else if (name == "MapValueAttribute" && attr.ConstructorArguments.Length == 2)
+                {
+                    var tgtProp = attr.ConstructorArguments[0].Value as string;
+                    if (tgtProp is not null)
+                        constants[tgtProp] = attr.ConstructorArguments[1].Value;
+                }
+                else if (name == "MapperIgnoreTargetAttribute" && attr.ConstructorArguments.Length == 1)
+                {
+                    if (attr.ConstructorArguments[0].Value is string ig) ignoreTargets.Add(ig);
+                }
+            }
+        }
+
+        var mappings = new System.Collections.Generic.List<InPlaceMapping>();
+        var consts = new System.Collections.Generic.List<InPlaceConstant>();
+
+        foreach (var dp in destination.GetMembers().OfType<IPropertySymbol>())
+        {
+            if (dp.DeclaredAccessibility != Accessibility.Public) continue;
+            if (PropertyMatcher.IsObsolete(dp)) continue;
+            if (ignoreTargets.Contains(dp.Name)) continue;
+            if (dp.SetMethod is not { DeclaredAccessibility: Accessibility.Public } setter) continue;
+            if (setter.IsInitOnly) continue;
+
+            if (constants.TryGetValue(dp.Name, out var constValue))
+            {
+                consts.Add(new InPlaceConstant(dp.Name, constValue, dp.Type));
+                continue;
+            }
+
+            var sourceName = renames.TryGetValue(dp.Name, out var rename) ? rename : dp.Name;
+            if (sourceProps.TryGetValue(sourceName, out var srcProp))
+            {
+                if (!renames.ContainsKey(dp.Name) && PropertyMatcher.IsObsolete(srcProp)) continue;
+                mappings.Add(new InPlaceMapping(dp.Name, srcProp.Name, srcProp.Type, dp.Type));
+            }
+        }
+
+        return new InPlaceMatch(mappings, consts);
+    }
+
+    private static bool AllInPlaceDestSettable(INamedTypeSymbol dst, InPlaceMatch match)
+    {
+        foreach (var m in match.Mappings)
+            if (!DestPropertyIsSettable(dst, m.TargetPropertyName)) return false;
+        foreach (var c in match.Constants)
+            if (!DestPropertyIsSettable(dst, c.TargetPropertyName)) return false;
+        return true;
+    }
+
+    private static bool DestPropertyIsSettable(INamedTypeSymbol dst, string paramName)
+    {
+        var prop = dst.GetMembers(paramName).OfType<IPropertySymbol>()
+            .FirstOrDefault(p => p.DeclaredAccessibility == Accessibility.Public);
+        return prop?.SetMethod is { DeclaredAccessibility: Accessibility.Public } setter
+            && !setter.IsInitOnly;
+    }
+
+    private static void EmitUpdateInPlaceMethod(StringBuilder sb, MappingDecl decl, InPlaceMatch match, MapperClass owningClass, Compilation comp, ITypeSymbol srcType, ITypeSymbol dstType)
+    {
+        sb.Append("    public static partial void Map(")
+          .Append(decl.SourceTypeFqn).Append(" src, ")
+          .Append(decl.DestinationTypeFqn).Append(" existingDst)\n    {\n");
+        sb.Append("        global::System.ArgumentNullException.ThrowIfNull(src);\n");
+        sb.Append("        global::System.ArgumentNullException.ThrowIfNull(existingDst);\n");
+
+        foreach (var hook in MatchingHooks(owningClass, isAfter: false, srcType, dstType, comp))
+            sb.Append("        ").Append(hook.MethodName).Append("(src);\n");
+
+        foreach (var m in match.Mappings)
+        {
+            var pm = new PropertyMapping(
+                TargetParamName: m.TargetPropertyName,
+                SourcePropertyName: m.SourcePropertyName,
+                SourceType: m.SourceType,
+                TargetType: m.TargetType);
+            var expr = ResolveExpression(pm, owningClass, comp);
+            sb.Append("        existingDst.").Append(m.TargetPropertyName).Append(" = ").Append(expr).Append(";\n");
+        }
+
+        foreach (var c in match.Constants)
+        {
+            sb.Append("        existingDst.").Append(c.TargetPropertyName).Append(" = ").Append(FormatLiteral(c.Value)).Append(";\n");
+        }
+
+        foreach (var hook in MatchingHooks(owningClass, isAfter: true, srcType, dstType, comp))
+            sb.Append("        ").Append(hook.MethodName).Append("(src, existingDst);\n");
+
+        sb.Append("    }\n");
     }
 
     internal static System.Collections.Generic.IEnumerable<HookMethod> MatchingHooks(MapperClass cls, bool isAfter, ITypeSymbol srcType, ITypeSymbol dstType, Compilation comp)

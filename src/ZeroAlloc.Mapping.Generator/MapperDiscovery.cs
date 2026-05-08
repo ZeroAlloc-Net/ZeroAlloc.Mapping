@@ -85,12 +85,17 @@ internal static class MapperDiscovery
 
                 var userPartial = FindUserPartialMethod(type, kind, typeArgs[0], typeArgs[1]);
 
+                var updateInPlace = kind == MappingKind.Map
+                    ? FindUpdateInPlacePartial(type, typeArgs[0], typeArgs[1])
+                    : null;
+
                 decls.Add(new MappingDecl(
                     SourceTypeFqn: typeArgs[0].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
                     DestinationTypeFqn: typeArgs[1].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
                     Kind: kind,
                     Location: type.Locations.FirstOrDefault() ?? Location.None,
-                    UserPartialMethod: userPartial));
+                    UserPartialMethod: userPartial,
+                    UpdateInPlacePartial: updateInPlace));
             }
 
             if (decls.Count == 0) continue;
@@ -155,6 +160,25 @@ internal static class MapperDiscovery
             if (m.Parameters.Length != 1) continue;
             if (!SymbolEqualityComparer.Default.Equals(m.Parameters[0].Type, src)) continue;
             if (kind == MappingKind.Map && !SymbolEqualityComparer.Default.Equals(m.ReturnType, dst)) continue;
+            return m;
+        }
+        return null;
+    }
+
+    private static IMethodSymbol? FindUpdateInPlacePartial(INamedTypeSymbol owner, ITypeSymbol src, ITypeSymbol dst)
+    {
+        foreach (var m in owner.GetMembers("Map").OfType<IMethodSymbol>())
+        {
+            if (!m.IsStatic) continue;
+            if (!m.ReturnsVoid) continue;
+            if (m.Parameters.Length != 2) continue;
+            if (!SymbolEqualityComparer.Default.Equals(m.Parameters[0].Type, src)) continue;
+            if (!SymbolEqualityComparer.Default.Equals(m.Parameters[1].Type, dst)) continue;
+            var isPartial = m.IsPartialDefinition || m.PartialDefinitionPart is not null
+                || m.DeclaringSyntaxReferences.Any(r =>
+                    r.GetSyntax() is Microsoft.CodeAnalysis.CSharp.Syntax.MethodDeclarationSyntax mds &&
+                    mds.Modifiers.Any(t => t.IsKind(Microsoft.CodeAnalysis.CSharp.SyntaxKind.PartialKeyword)));
+            if (!isPartial) continue;
             return m;
         }
         return null;
