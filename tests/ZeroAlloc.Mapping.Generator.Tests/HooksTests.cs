@@ -39,6 +39,26 @@ public class HooksTests
     }
 
     [Fact]
+    public Task Hook_OnMultiMapping_Class_Fires_Only_For_MatchingSourceType()
+    {
+        var source = """
+            using ZeroAlloc.Mapping;
+            public sealed record A(int X);
+            public sealed record B(int X);
+            public sealed record P(int Y);
+            public sealed record Q(int Y);
+            [Map<A, B>]
+            [Map<P, Q>]
+            public static partial class M
+            {
+                [BeforeMap]
+                public static void OnlyA(A src) { }
+            }
+            """;
+        return Verifier.Verify(TestHarness.RunGenerator(source)).UseDirectory("Snapshots");
+    }
+
+    [Fact]
     public Task TryMap_Hooks_Live_Inside_TryBlock()
     {
         var source = """
