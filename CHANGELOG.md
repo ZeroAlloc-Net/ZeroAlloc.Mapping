@@ -1,5 +1,25 @@
 # Changelog
 
+## [1.1.0](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/compare/v1.0.0...v1.1.0) (2026-05-08)
+
+
+### Features
+
+* **generator:** hook param matching uses Compilation.ClassifyConversion (assignable-from) ([7f3ba06](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/7f3ba06c7e8814d36ccee8c727748e6da37677fc))
+
+
+### Bug Fixes
+
+* **generator:** explicit [MapProperty] rename overrides [Obsolete] auto-skip ([1d225c2](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/1d225c2909ff27960470183e409a9d621f4b5dc4))
+* **generator:** hook exceptions in [TryMap] surface as mapping.hook.threw ([df4a671](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/df4a6712be69edc19be7846f2980776f3ad796ba))
+* post-v1 review follow-ups (hook variance, hook.threw code, Obsolete+rename, +tests) ([4a41344](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/4a41344dddfe7b46a28b4cb1284ecd266e7dc02b))
+
+
+### Tests
+
+* **generator:** pin hook src-type matching (regression test for 7f071d3) ([2ef9029](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/2ef9029ccd693f96265e63726207b941c61a7fbc))
+* **runtime:** reflection coverage for v1-extension attributes ([2df6ef0](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/2df6ef08022efea05bcb33bbfc594a3fd27c1aaf))
+
 ## 1.0.0 (2026-05-07)
 
 
