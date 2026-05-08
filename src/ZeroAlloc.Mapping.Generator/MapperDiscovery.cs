@@ -157,6 +157,10 @@ internal static class MapperDiscovery
                 a.AttributeClass is { Name: "StrictSourceMappingAttribute" } ac &&
                 ac.ContainingNamespace is { Name: "Mapping", ContainingNamespace.Name: "ZeroAlloc" });
 
+            var skipCollectionOverloads = type.GetAttributes().Any(a =>
+                a.AttributeClass is { Name: "SkipCollectionOverloadsAttribute" } ac &&
+                ac.ContainingNamespace is { Name: "Mapping", ContainingNamespace.Name: "ZeroAlloc" });
+
             var hooks = new System.Collections.Generic.List<HookMethod>();
             foreach (var m in type.GetMembers().OfType<IMethodSymbol>().Where(m => m.IsStatic))
             {
@@ -198,7 +202,8 @@ internal static class MapperDiscovery
                 Hooks: hooks,
                 Culture: culture,
                 PolymorphicDecls: polymorphics.Count > 0 ? polymorphics : null,
-                TypeSymbol: type);
+                TypeSymbol: type,
+                SkipCollectionOverloads: skipCollectionOverloads);
         }
     }
 

@@ -34,6 +34,8 @@ ZeroAlloc.Mapping.AfterMapAttribute.AfterMapAttribute() -> void
 ZeroAlloc.Mapping.MappingCultureAttribute
 ZeroAlloc.Mapping.MappingCultureAttribute.MappingCultureAttribute(string! cultureName) -> void
 ZeroAlloc.Mapping.MappingCultureAttribute.CultureName.get -> string!
+ZeroAlloc.Mapping.SkipCollectionOverloadsAttribute
+ZeroAlloc.Mapping.SkipCollectionOverloadsAttribute.SkipCollectionOverloadsAttribute() -> void
 ZeroAlloc.Mapping.MappingError
 ZeroAlloc.Mapping.MappingError.MappingError() -> void
 ZeroAlloc.Mapping.MappingError.MappingError(string! Code, string! PropertyPath, string? Reason = null, System.Collections.Generic.IReadOnlyList<ZeroAlloc.Mapping.MappingError>? Children = null) -> void
