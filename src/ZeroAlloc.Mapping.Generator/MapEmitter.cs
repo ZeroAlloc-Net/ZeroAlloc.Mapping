@@ -63,6 +63,25 @@ internal static class MapEmitter
             {
                 var matchingCases = FilterMatchingCases(cls, poly);
                 if (matchingCases.Count == 0) continue;
+
+                // Degenerate-pair guard: if a per-decl [Map<,>]/[TryMap<,>] already covers
+                // the polymorphic (base, baseDest) pair, the dispatcher and its collection
+                // overloads would emit duplicate method signatures. ZAMP014 already warns
+                // when the base is sealed; this guard prevents the duplicate-method compile
+                // error from masking the warning. Skip the entire polymorphic emission.
+                var collidesWithPerDecl = false;
+                foreach (var m in cls.Mappings)
+                {
+                    if (m.Kind == poly.Kind &&
+                        m.SourceTypeFqn == poly.BaseTypeFqn &&
+                        m.DestinationTypeFqn == poly.BaseDestinationTypeFqn)
+                    {
+                        collidesWithPerDecl = true;
+                        break;
+                    }
+                }
+                if (collidesWithPerDecl) continue;
+
                 if (poly.Kind == MappingKind.Map)
                 {
                     EmitPolymorphicDispatcher(sb, poly, matchingCases);

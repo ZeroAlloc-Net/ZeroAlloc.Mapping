@@ -76,6 +76,12 @@ public class CollectionOverloadsTests
             public static partial class M { }
             """;
         var output = TestHarness.RunGenerator(source);
-        Assert.DoesNotContain("List<", output, StringComparison.Ordinal);   // crude but effective
+        // Targeted negative-asserts on each of the 4 fallible collection-overload signatures.
+        Assert.DoesNotContain("TryMap(global::System.Collections.Generic.List<global::Src> src)", output, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryMap(global::Src[] src)", output, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryMap(global::System.Collections.Generic.IEnumerable<global::Src> src)", output, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryMap(global::System.Collections.Generic.IReadOnlyList<global::Src> src)", output, StringComparison.Ordinal);
+        // Single-element TryMap MUST still emit.
+        Assert.Contains("TryMap(global::Src src)", output, StringComparison.Ordinal);
     }
 }
