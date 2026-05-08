@@ -38,7 +38,10 @@ internal static class PropertyMatcher
         foreach (var p in source.GetMembers().OfType<IPropertySymbol>())
         {
             if (p.DeclaredAccessibility != Accessibility.Public) continue;
-            if (IsObsolete(p)) continue;
+            // Note: [Obsolete] source props are kept in the dictionary so explicit
+            // [MapProperty] renames can target them (explicit beats auto-skip). The
+            // auto-match path below rejects obsolete sources unless an explicit rename
+            // pointed at them.
             // Last-writer-wins on duplicate (case-insensitive collision); ZAMP011 reports the
             // ambiguity separately so the generator does not crash on otherwise-valid inputs.
             sourceProps[p.Name] = p;
@@ -113,6 +116,12 @@ internal static class PropertyMatcher
 
             if (sourceProps.TryGetValue(sourceName, out var srcProp))
             {
+                var isExplicitRename = renames.ContainsKey(p.Name);
+                if (!isExplicitRename && IsObsolete(srcProp))
+                {
+                    unmatched.Add(p.Name);
+                    continue;
+                }
                 mappings.Add(new PropertyMapping(
                     TargetParamName: p.Name,
                     SourcePropertyName: srcProp.Name,

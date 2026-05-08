@@ -16,8 +16,12 @@ internal static class TryMapEmitter
           .Append(".Failure(new global::ZeroAlloc.Mapping.MappingError(\"mapping.source.null\", \"(root)\"));\n");
         sb.Append("        try\n        {\n");
 
-        foreach (var hook in MapEmitter.MatchingHooks(owningClass, isAfter: false, srcType, dstType))
-            sb.Append("            ").Append(hook.MethodName).Append("(src);\n");
+        foreach (var hook in MapEmitter.MatchingHooks(owningClass, isAfter: false, srcType, dstType, comp))
+        {
+            sb.Append("            try { ").Append(hook.MethodName).Append("(src); }\n");
+            sb.Append("            catch (global::System.Exception hookEx) { return ").Append(resultType)
+              .Append(".Failure(new global::ZeroAlloc.Mapping.MappingError(\"mapping.hook.threw\", \"(root)\", hookEx.Message)); }\n");
+        }
 
         sb.Append("            var __dst = new ").Append(decl.DestinationTypeFqn).Append("(\n");
 
@@ -51,8 +55,12 @@ internal static class TryMapEmitter
 
         sb.Append("            );\n");
 
-        foreach (var hook in MapEmitter.MatchingHooks(owningClass, isAfter: true, srcType, dstType))
-            sb.Append("            ").Append(hook.MethodName).Append("(src, __dst);\n");
+        foreach (var hook in MapEmitter.MatchingHooks(owningClass, isAfter: true, srcType, dstType, comp))
+        {
+            sb.Append("            try { ").Append(hook.MethodName).Append("(src, __dst); }\n");
+            sb.Append("            catch (global::System.Exception hookEx) { return ").Append(resultType)
+              .Append(".Failure(new global::ZeroAlloc.Mapping.MappingError(\"mapping.hook.threw\", \"(root)\", hookEx.Message)); }\n");
+        }
 
         sb.Append("            return ").Append(resultType).Append(".Success(__dst);\n");
         sb.Append("        }\n");

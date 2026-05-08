@@ -39,6 +39,44 @@ public class HooksTests
     }
 
     [Fact]
+    public Task Hook_OnMultiMapping_Class_Fires_Only_For_MatchingSourceType()
+    {
+        var source = """
+            using ZeroAlloc.Mapping;
+            public sealed record A(int X);
+            public sealed record B(int X);
+            public sealed record P(int Y);
+            public sealed record Q(int Y);
+            [Map<A, B>]
+            [Map<P, Q>]
+            public static partial class M
+            {
+                [BeforeMap]
+                public static void OnlyA(A src) { }
+            }
+            """;
+        return Verifier.Verify(TestHarness.RunGenerator(source)).UseDirectory("Snapshots");
+    }
+
+    [Fact]
+    public Task BeforeMap_Hook_Fires_For_Derived_Source_Type()
+    {
+        var source = """
+            using ZeroAlloc.Mapping;
+            public abstract record SrcBase(int Id);
+            public sealed record SrcDerived(int Id, string Extra) : SrcBase(Id);
+            public sealed record Dst(int Id);
+            [Map<SrcDerived, Dst>]
+            public static partial class M
+            {
+                [BeforeMap]
+                public static void OnBase(SrcBase src) { }
+            }
+            """;
+        return Verifier.Verify(TestHarness.RunGenerator(source)).UseDirectory("Snapshots");
+    }
+
+    [Fact]
     public Task TryMap_Hooks_Live_Inside_TryBlock()
     {
         var source = """
@@ -52,6 +90,23 @@ public class HooksTests
                 public static void Validate(Src src) { }
                 [AfterMap]
                 public static void Audit(Src src, Dst dst) { }
+            }
+            """;
+        return Verifier.Verify(TestHarness.RunGenerator(source)).UseDirectory("Snapshots");
+    }
+
+    [Fact]
+    public Task TryMap_BeforeMapHook_Exception_Yields_HookErrorCode()
+    {
+        var source = """
+            using ZeroAlloc.Mapping;
+            public sealed record Src(int Id);
+            public sealed record Dst(int Id);
+            [TryMap<Src, Dst>]
+            public static partial class M
+            {
+                [BeforeMap]
+                public static void Validate(Src src) { }
             }
             """;
         return Verifier.Verify(TestHarness.RunGenerator(source)).UseDirectory("Snapshots");

@@ -45,7 +45,7 @@ internal static class MapEmitter
           .Append(decl.SourceTypeFqn).Append(" src)\n    {\n");
         sb.Append("        global::System.ArgumentNullException.ThrowIfNull(src);\n");
 
-        foreach (var hook in MatchingHooks(owningClass, isAfter: false, srcType, dstType))
+        foreach (var hook in MatchingHooks(owningClass, isAfter: false, srcType, dstType, comp))
             sb.Append("        ").Append(hook.MethodName).Append("(src);\n");
 
         sb.Append("        var __dst = new ").Append(decl.DestinationTypeFqn).Append("(\n");
@@ -70,31 +70,40 @@ internal static class MapEmitter
 
         sb.Append("        );\n");
 
-        foreach (var hook in MatchingHooks(owningClass, isAfter: true, srcType, dstType))
+        foreach (var hook in MatchingHooks(owningClass, isAfter: true, srcType, dstType, comp))
             sb.Append("        ").Append(hook.MethodName).Append("(src, __dst);\n");
 
         sb.Append("        return __dst;\n    }\n");
     }
 
-    internal static System.Collections.Generic.IEnumerable<HookMethod> MatchingHooks(MapperClass cls, bool isAfter, ITypeSymbol srcType, ITypeSymbol dstType)
+    internal static System.Collections.Generic.IEnumerable<HookMethod> MatchingHooks(MapperClass cls, bool isAfter, ITypeSymbol srcType, ITypeSymbol dstType, Compilation comp)
     {
         if (cls.Hooks is null) yield break;
+        var csComp = comp as Microsoft.CodeAnalysis.CSharp.CSharpCompilation;
         foreach (var h in cls.Hooks)
         {
             if (h.IsAfter != isAfter) continue;
             if (isAfter)
             {
                 if (h.ParamTypes.Length != 2) continue;
-                if (!SymbolEqualityComparer.Default.Equals(h.ParamTypes[0], srcType)) continue;
-                if (!SymbolEqualityComparer.Default.Equals(h.ParamTypes[1], dstType)) continue;
+                if (!IsAssignable(csComp, srcType, h.ParamTypes[0])) continue;
+                if (!IsAssignable(csComp, dstType, h.ParamTypes[1])) continue;
             }
             else
             {
                 if (h.ParamTypes.Length != 1) continue;
-                if (!SymbolEqualityComparer.Default.Equals(h.ParamTypes[0], srcType)) continue;
+                if (!IsAssignable(csComp, srcType, h.ParamTypes[0])) continue;
             }
             yield return h;
         }
+    }
+
+    private static bool IsAssignable(Microsoft.CodeAnalysis.CSharp.CSharpCompilation? comp, ITypeSymbol from, ITypeSymbol to)
+    {
+        if (SymbolEqualityComparer.Default.Equals(from, to)) return true;
+        if (comp is null) return false;
+        var conv = comp.ClassifyConversion(from, to);
+        return conv.IsImplicit && (conv.IsReference || conv.IsIdentity || conv.IsBoxing);
     }
 
     private static string ResolveExpression(PropertyMapping m, MapperClass owningClass, Compilation comp)

@@ -13,8 +13,6 @@ partial class M
             var __dst = new global::Dst(
                 Id: src.Id
             );
-            try { Audit(src, __dst); }
-            catch (global::System.Exception hookEx) { return global::ZeroAlloc.Results.Result<global::Dst, global::ZeroAlloc.Mapping.MappingError>.Failure(new global::ZeroAlloc.Mapping.MappingError("mapping.hook.threw", "(root)", hookEx.Message)); }
             return global::ZeroAlloc.Results.Result<global::Dst, global::ZeroAlloc.Mapping.MappingError>.Success(__dst);
         }
         catch (global::System.Exception ex)

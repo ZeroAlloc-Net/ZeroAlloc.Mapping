@@ -33,6 +33,24 @@ public class ObsoleteSkipTests
     }
 
     [Fact]
+    public Task Obsolete_Source_With_Explicit_MapPropertyRename_IsHonored()
+    {
+        var source = """
+            using System;
+            using ZeroAlloc.Mapping;
+            public sealed record Src(int A, [property: Obsolete] int Legacy);
+            public sealed record Dst(int A, int Modern);
+            [Map<Src, Dst>]
+            public static partial class M
+            {
+                [MapProperty("Legacy", "Modern")]
+                public static partial Dst Map(Src src);
+            }
+            """;
+        return Verifier.Verify(TestHarness.RunGenerator(source)).UseDirectory("Snapshots");
+    }
+
+    [Fact]
     public void Obsolete_DestinationParam_DoesNotFire_ZAMP001()
     {
         var source = """
