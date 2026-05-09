@@ -1,5 +1,37 @@
 # Changelog
 
+## [1.3.1](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/compare/v1.3.0...v1.3.1) (2026-05-09)
+
+
+### Documentation
+
+* **advanced:** MappingError tree + Result integration + edge cases ([a63416e](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/a63416e779e2b9e2795950834fa1070c03f0ac7d))
+* **basic-mapping:** property matching + 5 conversion paths + customisation ([3d9a24a](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/3d9a24aebfe3bb55bbe8cd82805e5c681faff6c3))
+* **basic-mapping:** replace non-existent [StrictDestinationMapping] with real [StrictSourceMapping] ([b2dade4](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/b2dade4bfa3711e05e72326bd3be64d35e79684a))
+* **collections:** auto-emitted overloads + nested-element + [SkipCollectionOverloads] ([9be42a0](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/9be42a0c6759345820929fc5f3959e42f3bf63d7))
+* **cookbook:** 01 command-to-domain with smart-ctor OrderId ([8ac2f79](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/8ac2f79f2938c201468f4e71ac5e3ce240184e89))
+* **cookbook:** 02 domain-to-dto with [ReverseMap] ([c231d46](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/c231d460ce3e333c0742ea1fb7f60dd5f39c3247))
+* **cookbook:** 03 fallible mapping with smart-ctor value objects ([f4ef2d2](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/f4ef2d29a97d2a2c314855dd1639a6cdaef02510))
+* **cookbook:** 04 flattening nested DTOs (!. vs ?. chain rules) ([1c172a9](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/1c172a92d814e4899ad78d8452f52cc0f87653fe))
+* **cookbook:** 05 polymorphic domain hierarchies (PaymentMethod example) ([9e7bef3](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/9e7bef31241048b68f9a5390da2b89a84af02a05))
+* **cookbook:** 06 collection pipelines + EF Core update-in-place ([db3dffb](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/db3dffbd7fe3c508ccb10999e9ae1fb2067e46f4))
+* **cookbook:** match recipe 05 dispatcher message to snapshot verbatim ([f240ec9](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/f240ec95d5d1e22f93e9dfa2ae8b21e582a17f8f))
+* **culture-and-strict:** [MappingCulture] + [StrictSourceMapping] + [CaseInsensitiveMapping] ([953065f](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/953065f98b288556f4bf9f84add23419b01768bb))
+* **diagnostics:** ZAMP001-016 reference with trigger + fix examples ([7af2c3d](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/7af2c3d9b66a4c328aac6f525f6f46b3c0e7ab48))
+* **flattening:** dotted [MapProperty] paths + null-handling rules + ZAMP005 ([95a346e](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/95a346e82b146112f3b4e63740c04dd3cf6a3ba0))
+* **getting-started:** 5-minute install + first mapping walkthrough ([03a5449](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/03a5449df2a2d423c55f761e777393e407b841dc))
+* **hooks:** [BeforeMap]/[AfterMap] + variance + TryMap error-code split ([2ad97f5](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/2ad97f5c886d0a26de6f246ba3aff00c25a6570e))
+* **hooks:** quote frontmatter description starting with [ — YAML parser fix ([6674ba4](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/6674ba4114f27f9ba24b83c119e2cb7e78429061))
+* **index:** replace v1 placeholder with full Docusaurus index ([3e980fa](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/3e980fa304a6c6c0171d7a485d2242ca7014923a))
+* **performance:** zero-alloc internals + allocation-budget table + AOT ([63984ec](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/63984ecf886ae87c100d59957671feeeb9444e31))
+* **plans:** website docs launch design — full Mediator-parity doc set + submodule wiring ([7b6826c](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/7b6826c55f16b34a7ca91370c408e03dc9c4bdd2))
+* **plans:** website docs launch implementation plan — 25 tasks across 7 phases ([b0c5964](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/b0c5964035b32458dadf1839b0545681241173d6))
+* **polymorphic:** switch dispatcher + ZAMP013/014/015 + degenerate-pair guard ([2152153](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/2152153b32a485e7e25738230395c64d6605ca01))
+* **reverse-mapping:** [ReverseMap] desugar + ZAMP009 safety guard ([1af7412](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/1af7412dea195c82376adf1d5ef1604c9d2c45bc))
+* **testing:** snapshot pattern + allocation gates + generator harness ([ccdaae1](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/ccdaae126a34095f1bf848e9906722c39bf9c611))
+* **update-in-place:** void Map(TSrc, TDst) overload + ZAMP012 ([5a7721b](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/5a7721b50afbb1bb551bd74b5f37e6d433f0bfff))
+* website launch — Mediator-parity doc set (14 pages + 6 cookbook) ([eb919ea](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/eb919eab36fc9d7f50c0a2dd25956b599e2d9099))
+
 ## [1.3.0](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/compare/v1.2.0...v1.3.0) (2026-05-08)
 
 
