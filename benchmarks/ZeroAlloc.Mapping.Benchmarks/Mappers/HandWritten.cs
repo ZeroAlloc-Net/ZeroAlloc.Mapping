@@ -8,7 +8,7 @@ public static class HandWritten
         s.Id, s.Name, s.Email, s.Age, s.Active, s.Score, s.Version, s.Country);
 
     public static ConvDst MapConv(ConvSrc s) => new(
-        new OrderId(int.Parse(s.Id, System.Globalization.CultureInfo.InvariantCulture)),
+        new OrderId(s.Id),
         Enum.Parse<Status>(s.Status),
         s.Count,
         DateTime.Parse(s.Created, System.Globalization.CultureInfo.InvariantCulture));
