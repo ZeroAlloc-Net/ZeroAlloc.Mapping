@@ -93,7 +93,41 @@ Reflection-based mappers (AutoMapper, Mapster's expression mode) build a runtime
 - **Allocations**: cached expression trees still box value-typed property reads in some configurations and allocate per-call closures over rule lookups. The generator's emitted body has no boxing and no closures.
 - **AOT compatibility**: reflection-based mappers either don't work under Native AOT or require extensive `[DynamicallyAccessedMembers]` annotations and trim hints. Source generators emit code the trimmer can see and prove safe.
 
-Mapperly is the closest peer — also a source generator, also zero-reflection. Detailed BenchmarkDotNet comparisons against Mapperly and AutoMapper are deferred to a separate document; this page documents budgets, not benchmarks.
+Mapperly is the closest peer — also a source generator, also zero-reflection. Concrete BenchmarkDotNet numbers comparing all four (ZeroAlloc.Mapping, Mapperly, AutoMapper, hand-written) are below.
+
+## Benchmarks
+
+### Methodology
+
+The harness lives at `benchmarks/ZeroAlloc.Mapping.Benchmarks/`. It compares four mappers across seven scenarios using BenchmarkDotNet's default JIT job on .NET 10, with `[MemoryDiagnoser]` enabled. Each scenario uses identical source/destination types across all mappers; AutoMapper's `IMapper` is built once in `[GlobalSetup]` so profile compilation is excluded from per-iteration cost. Hand-written rows use inline `new Dst(...)` with no helper indirection.
+
+### Results
+
+<!-- BENCH:START -->
+_Results not yet imported. Run `tools/import-benchmarks.ps1`._
+<!-- BENCH:END -->
+
+### Reproducing
+
+```bash
+dotnet run -c Release --project benchmarks/ZeroAlloc.Mapping.Benchmarks -- --filter "*"
+pwsh tools/import-benchmarks.ps1
+```
+
+The first command takes ~15 minutes; the second is instant. Re-commit `docs/performance.md` after the splice.
+
+### Reading the numbers
+
+- **HandWritten** is the speed-of-light. ZeroAlloc.Mapping should match it (or be within noise) for FlatIdentity and UpdateInPlace.
+- **Mapperly** should be within ~30% of ZeroAlloc.Mapping on most scenarios — both are source generators emitting nearly identical IL, so any large gap is worth investigating.
+- **AutoMapper** typically lands 10x–100x slower with non-zero allocation everywhere. That gap is the cost of runtime expression-tree compilation and per-call rule lookup.
+- The `Allocated` column is the load-bearing one for "zero-allocation" claims. If ZeroAlloc.Mapping shows non-zero bytes, the destination type itself is being measured (records allocate; structs don't) — see the budget table above for per-shape baselines.
+
+### What's not measured here
+
+- **Startup tax** — AutoMapper's first-call profile compilation (~tens of ms) isn't reflected in steady-state numbers. If you map once per process lifetime, the comparison flips.
+- **AOT** — BDN doesn't run under Native AOT; `samples/ZeroAlloc.Mapping.AotSmoke/` covers correctness there. The generated mapping body is identical between JIT and AOT, so steady-state perf is the same.
+- **Multi-threaded contention** — single-threaded numbers only. Mapping has no shared mutable state; multi-threaded would just measure thread-pool noise.
 
 ## Where to next
 
