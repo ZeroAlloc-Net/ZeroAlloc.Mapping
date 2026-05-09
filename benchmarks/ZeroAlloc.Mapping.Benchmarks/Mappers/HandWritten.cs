@@ -11,7 +11,8 @@ public static class HandWritten
         new OrderId(s.Id),
         Enum.Parse<Status>(s.Status),
         s.Count,
-        DateTime.Parse(s.Created, System.Globalization.CultureInfo.InvariantCulture));
+        DateTime.Parse(s.Created, System.Globalization.CultureInfo.InvariantCulture),
+        int.Parse(s.Quantity, System.Globalization.CultureInfo.InvariantCulture));
 
     public static OrderFlat MapFlatten(OrderSrc s) => new(
         s.OrderId, s.Customer.Id, s.Customer.Name,

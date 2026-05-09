@@ -15,7 +15,9 @@ public sealed class BenchmarkProfile : Profile
             .ForMember(d => d.Id, o => o.MapFrom(s => new OrderId(s.Id)))
             .ForMember(d => d.Status, o => o.MapFrom(s => Enum.Parse<Status>(s.Status)))
             .ForMember(d => d.Created, o => o.MapFrom(s =>
-                DateTime.Parse(s.Created, System.Globalization.CultureInfo.InvariantCulture)));
+                DateTime.Parse(s.Created, System.Globalization.CultureInfo.InvariantCulture)))
+            .ForMember(d => d.Quantity, o => o.MapFrom(s =>
+                int.Parse(s.Quantity, System.Globalization.CultureInfo.InvariantCulture)));
 
         // OrderFlat is a record with no parameterless ctor. AutoMapper 16
         // can't auto-construct from the dotted-source mappings alone, so we

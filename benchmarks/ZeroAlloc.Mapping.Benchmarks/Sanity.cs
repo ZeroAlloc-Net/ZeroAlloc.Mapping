@@ -53,7 +53,8 @@ internal static class Sanity
             // ISO-8601 round-trippable; DateTime.Parse with InvariantCulture
             // produces a Local kind. All four mappers go through the same
             // DateTime.Parse path so they should all match exactly.
-            Created: "2026-01-15T10:30:00");
+            Created: "2026-01-15T10:30:00",
+            Quantity: "100");
 
         var hand = HandWritten.MapConv(src);
         var za = ZaConv.Map(src);
@@ -165,7 +166,8 @@ internal static class Sanity
             Id: 42,
             Status: nameof(Models.Status.Active),
             Count: 1000,
-            Created: "2026-01-15T10:30:00");
+            Created: "2026-01-15T10:30:00",
+            Quantity: "100");
 
         var result = ZaTry.TryMap(src);
         if (!result.IsSuccess)
