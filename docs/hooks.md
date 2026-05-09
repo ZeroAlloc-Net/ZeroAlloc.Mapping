@@ -1,7 +1,7 @@
 ---
 id: hooks
 title: Hooks
-description: [BeforeMap] and [AfterMap] hooks for validation, logging, and post-mapping computations.
+description: "[BeforeMap] and [AfterMap] hooks for validation, logging, and post-mapping computations."
 sidebar_position: 8
 ---
 
