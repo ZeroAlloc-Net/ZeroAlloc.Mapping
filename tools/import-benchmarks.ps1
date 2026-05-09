@@ -25,14 +25,14 @@ if ($reports.Count -eq 0) {
 }
 
 $blocks = foreach ($r in $reports) {
-    $title = ($r.BaseName -replace '\.Scenarios\.', '' -replace '-report-github$', '')
+    $title = ($r.BaseName -replace '^ZeroAlloc\.Mapping\.Benchmarks\.Scenarios\.', '' -replace '-report-github$', '' -replace 'Bench$', '')
     $body = Get-Content $r.FullName -Raw
     "### $title`n`n$body`n"
 }
 
 $content = $blocks -join "`n"
 $timestamp = (Get-Date).ToString('yyyy-MM-dd')
-$wrapped = "<!-- BENCH:START -->`n_Last refreshed: $timestamp_`n`n$content`n<!-- BENCH:END -->"
+$wrapped = "<!-- BENCH:START -->`n_Last refreshed: ${timestamp}_`n`n$content`n<!-- BENCH:END -->"
 
 $md = Get-Content $perfMd -Raw
 $pattern = '<!-- BENCH:START -->[\s\S]*?<!-- BENCH:END -->'
@@ -44,6 +44,17 @@ if ($md -notmatch $pattern) {
 $evaluator = [System.Text.RegularExpressions.MatchEvaluator] { param($m) $wrapped }
 $updated = [regex]::Replace($md, $pattern, $evaluator)
 
-Set-Content -Path $perfMd -Value $updated -NoNewline
+# Retry write — performance.md may be transiently locked by an editor / indexer / sync agent.
+$attempts = 0
+while ($true) {
+    try {
+        [System.IO.File]::WriteAllText($perfMd, $updated, [System.Text.UTF8Encoding]::new($false))
+        break
+    } catch [System.IO.IOException] {
+        $attempts++
+        if ($attempts -ge 10) { throw }
+        Start-Sleep -Milliseconds 500
+    }
+}
 
 Write-Host "Imported $($reports.Count) benchmark reports into $perfMd."
