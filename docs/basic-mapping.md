@@ -36,7 +36,7 @@ public static global::Order Map(global::OrderRequest src)
 ```
 
 :::tip
-Need case-insensitive matching, or want unmatched destinations to fail the build instead of silently emitting `default`? See [Culture & Strict Mode](culture-and-strict.md) for `[CaseInsensitiveMapping]` and `[StrictDestinationMapping]`.
+Need case-insensitive matching, or want unconsumed source properties to fail the build instead of being silently dropped? See [Culture & Strict Mode](culture-and-strict.md) for `[CaseInsensitiveMapping]` and `[StrictSourceMapping]`.
 :::
 
 ## Conversion Paths
