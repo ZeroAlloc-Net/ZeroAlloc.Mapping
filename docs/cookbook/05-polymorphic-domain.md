@@ -68,7 +68,7 @@ public static PaymentMethodDto Map(PaymentMethod src)
         BankTransfer __1 => Map(__1),
         CryptoWallet __2 => Map(__2),
         _ => throw new InvalidOperationException(
-                $"No polymorphic mapping registered for runtime type {src.GetType().FullName}.")
+                "No polymorphic mapping for runtime type " + src.GetType().FullName)
     };
 }
 ```
