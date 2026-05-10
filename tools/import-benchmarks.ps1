@@ -19,13 +19,27 @@ if (-not (Test-Path $resultsDir)) {
     throw "No results at $resultsDir. Run 'dotnet run -c Release --project benchmarks/ZeroAlloc.Mapping.Benchmarks -- --filter `"*`"' first."
 }
 
-$reports = Get-ChildItem -Path $resultsDir -Filter '*-report-github.md' | Sort-Object Name
+# Explicit narrative ordering — alphabetical sort would scatter related rows
+# (Collection→FlatConversion→FlatIdentity…). The intuitive reading order is
+# the baseline first, then conversions, then increasingly composite scenarios.
+$order = @('FlatIdentity', 'FlatConversion', 'Flattening', 'Collection', 'Polymorphic', 'UpdateInPlace', 'TryMap')
+
+function Get-ScenarioName {
+    param([string]$baseName)
+    return ($baseName -replace '^ZeroAlloc\.Mapping\.Benchmarks\.Scenarios\.', '' -replace '-report-github$', '' -replace 'Bench$', '')
+}
+
+$reports = Get-ChildItem -Path $resultsDir -Filter '*-report-github.md' | Sort-Object {
+    $name = Get-ScenarioName $_.BaseName
+    $idx = $order.IndexOf($name)
+    if ($idx -ge 0) { $idx } else { 99 }  # unknown scenarios sort last
+}, Name
 if ($reports.Count -eq 0) {
     throw "No -report-github.md files found in $resultsDir."
 }
 
 $blocks = foreach ($r in $reports) {
-    $title = ($r.BaseName -replace '^ZeroAlloc\.Mapping\.Benchmarks\.Scenarios\.', '' -replace '-report-github$', '' -replace 'Bench$', '')
+    $title = Get-ScenarioName $r.BaseName
     $body = Get-Content $r.FullName -Raw
     "### $title`n`n$body`n"
 }
