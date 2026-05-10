@@ -10,4 +10,7 @@
   <Folder Name="/samples/">
     <Project Path="samples/ZeroAlloc.Mapping.AotSmoke/ZeroAlloc.Mapping.AotSmoke.csproj" />
   </Folder>
+  <Folder Name="/benchmarks/">
+    <Project Path="benchmarks/ZeroAlloc.Mapping.Benchmarks/ZeroAlloc.Mapping.Benchmarks.csproj" />
+  </Folder>
 </Solution>
