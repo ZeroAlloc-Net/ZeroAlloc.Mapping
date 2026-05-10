@@ -50,10 +50,12 @@ internal static class Sanity
             Id: 42,
             Status: nameof(Models.Status.Active),
             Count: 1000,
-            // ISO-8601 round-trippable; DateTime.Parse with InvariantCulture
-            // produces a Local kind. All four mappers go through the same
-            // DateTime.Parse path so they should all match exactly.
-            Created: "2026-01-15T10:30:00",
+            // ISO-8601 round-trippable with trailing 'Z' so DateTime.Parse with
+            // InvariantCulture produces a Utc kind. Matches the literal used by
+            // FlatConversionBench and TryMapBench so the sanity check exercises
+            // the exact string the benchmarks do; all four mappers share the
+            // same DateTime.Parse path so they remain parity-equal.
+            Created: "2026-05-09T12:00:00Z",
             Quantity: "100");
 
         var hand = HandWritten.MapConv(src);
@@ -166,7 +168,7 @@ internal static class Sanity
             Id: 42,
             Status: nameof(Models.Status.Active),
             Count: 1000,
-            Created: "2026-01-15T10:30:00",
+            Created: "2026-05-09T12:00:00Z",
             Quantity: "100");
 
         var result = ZaTry.TryMap(src);

@@ -20,11 +20,9 @@ public class TryMapBench
     [Benchmark(Baseline = true)] public ConvDst HandWritten_() => HandWritten.MapConv(_src);
     [Benchmark] public Result<ConvDst, MappingError> ZeroAlloc_() => ZaTry.TryMap(_src);
 
-    // Mapperly has no native Result-type — wrap in try/catch for fairness:
-    [Benchmark]
-    public ConvDst Mapperly_()
-    {
-        try { return MapperlyConv.Map(_src); }
-        catch { throw; }
-    }
+    // Mapperly has no native fallible-mapping primitive; this row measures its
+    // non-fallible Map call as a reference point for the cost ZA's TryMap pays
+    // beyond happy-path mapping. AutoMapper is omitted entirely since it has
+    // no equivalent. See docs/performance.md for the full caveat.
+    [Benchmark] public ConvDst Mapperly_() => MapperlyConv.Map(_src);
 }
