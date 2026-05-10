@@ -1,5 +1,42 @@
 # Changelog
 
+## [1.4.0](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/compare/v1.3.1...v1.4.0) (2026-05-10)
+
+
+### Features
+
+* **bench:** add AutoMapper profile ([9cb6eac](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/9cb6eac39c6452e2c68e5a7ad81f579fe38fa3d8))
+* **bench:** add hand-written baseline mappers ([d3bb876](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/d3bb8768f23e60cc4b73e1dd8d282084cb1411f3))
+* **bench:** add Mapperly mapper definitions ([381b781](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/381b781a26e9673be64638e7c83b84d6d86e8e5d))
+* **bench:** add shared model fixtures ([58873de](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/58873dea2bdc0111a55248fcdb65ccda4cdc759a))
+* **bench:** add ZeroAlloc.Mapping mapper definitions ([76baee7](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/76baee792065dea3425f8345b52a0fa96faa567a))
+* **bench:** Collection scenario ([40fed2c](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/40fed2c234fa9ab19e0719bb90898f93493cf760))
+* **bench:** FlatConversion scenario ([6873a35](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/6873a351580cbc42aeccf816871eb92f449060bf))
+* **bench:** FlatIdentity scenario ([ed18d4d](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/ed18d4da192933e12d146c9d122927e8f0a23071))
+* **bench:** Flattening scenario ([f532c09](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/f532c0966180eaef00dd6f9b0e2a7f7ebb49631e))
+* **bench:** import-benchmarks.ps1 splices BDN results into performance.md ([f138ea1](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/f138ea1040345c7d06aaf0fdb1457ebbe023ee57))
+* **bench:** parity check across all four mappers ([bde4d0e](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/bde4d0e280c81deb957c43fa5af50dcab07043b2))
+* **bench:** Polymorphic scenario ([1c0f7a0](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/1c0f7a0a9afe76d170ea86f2ca2a3a47b7110b48))
+* **bench:** restore string→int Parse coverage to ConvSrc ([9bfbf76](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/9bfbf76ff0a21cfbe2b1b279e126c11ca8c3abbc))
+* **bench:** TryMap scenario ([547b896](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/547b896d0706e79539f8a6271e61d384aeb92c59))
+* **bench:** UpdateInPlace scenario ([6a485e1](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/6a485e10b85ac99b7a83025b934699241b3aa6f7))
+
+
+### Bug Fixes
+
+* **bench:** drop misleading TryMap try/catch wrap; align Sanity input with bench ([7347d74](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/7347d74b1317e3ee874e1741bb4f93c5e6e9ae34))
+* **bench:** import script — strip full project prefix in title, fix `${timestamp}` braces, retry locked file writes ([002573a](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/002573a727a397f0cdb0468d967c2ebdc14fedf6))
+* **bench:** order import-benchmarks output by narrative, not alphabet ([dcb609e](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/dcb609e09d36da8be62aa9d3ea3275ab8a7f292f))
+
+
+### Documentation
+
+* **performance:** add Benchmarks section with sentinels ([6330509](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/63305091677d048aa80d9a7bccf9b5b3614e362b))
+* **performance:** caveats, AutoMapper licensing, FlatIdentity noise note ([b2c2f44](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/b2c2f44ad4c14663f64ed17672592fe5edbb56ff))
+* **performance:** import first benchmark run ([5fab55a](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/5fab55aae3757243a74f93704a922a9949ad2eaa))
+* **performance:** re-import after TryMap source fix and narrative-ordering script ([848aa44](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/848aa4424a7bcd20f266d21a57331018a8455397))
+* **plans:** benchmark harness design + implementation plan ([0efd159](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/0efd1595b2d5e3fa95280c59e51ede42f81d194d))
+
 ## [1.3.1](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/compare/v1.3.0...v1.3.1) (2026-05-09)
 
 
