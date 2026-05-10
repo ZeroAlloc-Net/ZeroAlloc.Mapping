@@ -108,7 +108,7 @@ AutoMapper 16.x is commercially licensed; the benchmark project is dev-only and 
 <!-- BENCH:START -->
 _Last refreshed: 2026-05-10_
 
-### Collection
+### FlatIdentity
 
 ```
 
@@ -120,12 +120,12 @@ BenchmarkDotNet v0.15.8, Windows 11 (10.0.26200.8246/25H2/2025Update/HudsonValle
 
 
 ```
-| Method       | Mean     | Error    | StdDev    | Median   | Ratio | RatioSD | Gen0   | Gen1   | Allocated | Alloc Ratio |
-|------------- |---------:|---------:|----------:|---------:|------:|--------:|-------:|-------:|----------:|------------:|
-| HandWritten_ | 39.57 μs | 4.549 μs | 13.051 μs | 37.90 μs |  1.11 |    0.51 | 1.5869 |      - |  78.18 KB |        1.00 |
-| ZeroAlloc_   | 38.61 μs | 3.943 μs | 10.992 μs | 37.19 μs |  1.08 |    0.46 | 1.6479 | 0.1221 |  78.18 KB |        1.00 |
-| Mapperly_    | 41.09 μs | 5.774 μs | 15.710 μs | 35.97 μs |  1.15 |    0.58 | 1.7090 | 0.1221 |  78.25 KB |        1.00 |
-| AutoMapper_  | 30.44 μs | 3.239 μs |  9.294 μs | 28.52 μs |  0.85 |    0.38 | 1.8311 | 0.1221 |  86.52 KB |        1.11 |
+| Method       | Mean     | Error    | StdDev    | Ratio | RatioSD | Gen0   | Allocated | Alloc Ratio |
+|------------- |---------:|---------:|----------:|------:|--------:|-------:|----------:|------------:|
+| HandWritten_ | 32.44 ns | 3.047 ns |  8.643 ns |  1.06 |    0.38 | 0.0014 |      72 B |        1.00 |
+| ZeroAlloc_   | 30.79 ns | 2.696 ns |  7.288 ns |  1.01 |    0.33 | 0.0015 |      72 B |        1.00 |
+| Mapperly_    | 26.29 ns | 2.500 ns |  7.132 ns |  0.86 |    0.31 | 0.0015 |      72 B |        1.00 |
+| AutoMapper_  | 76.37 ns | 6.919 ns | 19.173 ns |  2.50 |    0.86 | 0.0014 |      72 B |        1.00 |
 
 
 ### FlatConversion
@@ -148,26 +148,6 @@ BenchmarkDotNet v0.15.8, Windows 11 (10.0.26200.8246/25H2/2025Update/HudsonValle
 | AutoMapper_  | 327.2 ns | 12.22 ns | 33.66 ns | 323.0 ns |  1.98 |    0.30 | 0.0010 |      48 B |        1.00 |
 
 
-### FlatIdentity
-
-```
-
-BenchmarkDotNet v0.15.8, Windows 11 (10.0.26200.8246/25H2/2025Update/HudsonValley2)
-12th Gen Intel Core i9-12900HK 2.50GHz, 1 CPU, 20 logical and 14 physical cores
-.NET SDK 10.0.203
-  [Host]     : .NET 10.0.7 (10.0.7, 10.0.726.21808), X64 RyuJIT x86-64-v3
-  DefaultJob : .NET 10.0.7 (10.0.7, 10.0.726.21808), X64 RyuJIT x86-64-v3
-
-
-```
-| Method       | Mean     | Error    | StdDev    | Ratio | RatioSD | Gen0   | Allocated | Alloc Ratio |
-|------------- |---------:|---------:|----------:|------:|--------:|-------:|----------:|------------:|
-| HandWritten_ | 32.44 ns | 3.047 ns |  8.643 ns |  1.06 |    0.38 | 0.0014 |      72 B |        1.00 |
-| ZeroAlloc_   | 30.79 ns | 2.696 ns |  7.288 ns |  1.01 |    0.33 | 0.0015 |      72 B |        1.00 |
-| Mapperly_    | 26.29 ns | 2.500 ns |  7.132 ns |  0.86 |    0.31 | 0.0015 |      72 B |        1.00 |
-| AutoMapper_  | 76.37 ns | 6.919 ns | 19.173 ns |  2.50 |    0.86 | 0.0014 |      72 B |        1.00 |
-
-
 ### Flattening
 
 ```
@@ -186,6 +166,26 @@ BenchmarkDotNet v0.15.8, Windows 11 (10.0.26200.8246/25H2/2025Update/HudsonValle
 | ZeroAlloc_   | 22.88 ns | 2.493 ns |  7.031 ns |  0.94 |    0.50 | 0.0015 |      72 B |        1.00 |
 | Mapperly_    | 22.95 ns | 2.385 ns |  6.727 ns |  0.94 |    0.49 | 0.0015 |      72 B |        1.00 |
 | AutoMapper_  | 70.84 ns | 5.222 ns | 14.556 ns |  2.91 |    1.37 | 0.0014 |      72 B |        1.00 |
+
+
+### Collection
+
+```
+
+BenchmarkDotNet v0.15.8, Windows 11 (10.0.26200.8246/25H2/2025Update/HudsonValley2)
+12th Gen Intel Core i9-12900HK 2.50GHz, 1 CPU, 20 logical and 14 physical cores
+.NET SDK 10.0.203
+  [Host]     : .NET 10.0.7 (10.0.7, 10.0.726.21808), X64 RyuJIT x86-64-v3
+  DefaultJob : .NET 10.0.7 (10.0.7, 10.0.726.21808), X64 RyuJIT x86-64-v3
+
+
+```
+| Method       | Mean     | Error    | StdDev    | Median   | Ratio | RatioSD | Gen0   | Gen1   | Allocated | Alloc Ratio |
+|------------- |---------:|---------:|----------:|---------:|------:|--------:|-------:|-------:|----------:|------------:|
+| HandWritten_ | 39.57 μs | 4.549 μs | 13.051 μs | 37.90 μs |  1.11 |    0.51 | 1.5869 |      - |  78.18 KB |        1.00 |
+| ZeroAlloc_   | 38.61 μs | 3.943 μs | 10.992 μs | 37.19 μs |  1.08 |    0.46 | 1.6479 | 0.1221 |  78.18 KB |        1.00 |
+| Mapperly_    | 41.09 μs | 5.774 μs | 15.710 μs | 35.97 μs |  1.15 |    0.58 | 1.7090 | 0.1221 |  78.25 KB |        1.00 |
+| AutoMapper_  | 30.44 μs | 3.239 μs |  9.294 μs | 28.52 μs |  0.85 |    0.38 | 1.8311 | 0.1221 |  86.52 KB |        1.11 |
 
 
 ### Polymorphic
@@ -208,25 +208,6 @@ BenchmarkDotNet v0.15.8, Windows 11 (10.0.26200.8246/25H2/2025Update/HudsonValle
 | AutoMapper_  | 48.76 ns | 2.724 ns | 7.726 ns |  4.59 |    1.30 | 0.0006 |      32 B |        1.00 |
 
 
-### TryMap
-
-```
-
-BenchmarkDotNet v0.15.8, Windows 11 (10.0.26200.8246/25H2/2025Update/HudsonValley2)
-12th Gen Intel Core i9-12900HK 2.50GHz, 1 CPU, 20 logical and 14 physical cores
-.NET SDK 10.0.203
-  [Host]     : .NET 10.0.7 (10.0.7, 10.0.726.21808), X64 RyuJIT x86-64-v3
-  DefaultJob : .NET 10.0.7 (10.0.7, 10.0.726.21808), X64 RyuJIT x86-64-v3
-
-
-```
-| Method       | Mean     | Error    | StdDev   | Ratio | RatioSD | Gen0   | Allocated | Alloc Ratio |
-|------------- |---------:|---------:|---------:|------:|--------:|-------:|----------:|------------:|
-| HandWritten_ | 185.0 ns |  7.87 ns | 21.93 ns |  1.01 |    0.17 | 0.0010 |      48 B |        1.00 |
-| ZeroAlloc_   | 185.0 ns |  7.67 ns | 21.39 ns |  1.01 |    0.16 | 0.0010 |      48 B |        1.00 |
-| Mapperly_    | 194.8 ns | 14.86 ns | 41.42 ns |  1.07 |    0.26 | 0.0010 |      48 B |        1.00 |
-
-
 ### UpdateInPlace
 
 ```
@@ -245,6 +226,25 @@ BenchmarkDotNet v0.15.8, Windows 11 (10.0.26200.8246/25H2/2025Update/HudsonValle
 | ZeroAlloc_   |  6.051 ns | 0.6478 ns | 1.8482 ns |  5.417 ns |  1.35 |    0.49 |         - |          NA |
 | Mapperly_    |  6.000 ns | 0.3755 ns | 1.0468 ns |  5.838 ns |  1.33 |    0.35 |         - |          NA |
 | AutoMapper_  | 83.935 ns | 0.6793 ns | 0.6022 ns | 83.985 ns | 18.66 |    3.59 |         - |          NA |
+
+
+### TryMap
+
+```
+
+BenchmarkDotNet v0.15.8, Windows 11 (10.0.26200.8246/25H2/2025Update/HudsonValley2)
+12th Gen Intel Core i9-12900HK 2.50GHz, 1 CPU, 20 logical and 14 physical cores
+.NET SDK 10.0.203
+  [Host]     : .NET 10.0.7 (10.0.7, 10.0.726.21808), X64 RyuJIT x86-64-v3
+  DefaultJob : .NET 10.0.7 (10.0.7, 10.0.726.21808), X64 RyuJIT x86-64-v3
+
+
+```
+| Method       | Mean     | Error    | StdDev   | Median   | Ratio | RatioSD | Gen0   | Allocated | Alloc Ratio |
+|------------- |---------:|---------:|---------:|---------:|------:|--------:|-------:|----------:|------------:|
+| HandWritten_ | 222.6 ns | 13.84 ns | 39.71 ns | 208.5 ns |  1.03 |    0.25 | 0.0010 |      48 B |        1.00 |
+| ZeroAlloc_   | 208.4 ns |  9.66 ns | 27.08 ns | 201.6 ns |  0.96 |    0.20 | 0.0010 |      48 B |        1.00 |
+| Mapperly_    | 195.4 ns |  8.59 ns | 23.81 ns | 194.2 ns |  0.90 |    0.18 | 0.0010 |      48 B |        1.00 |
 
 
 <!-- BENCH:END -->
