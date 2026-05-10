@@ -101,6 +101,8 @@ Mapperly is the closest peer — also a source generator, also zero-reflection. 
 
 The harness lives at `benchmarks/ZeroAlloc.Mapping.Benchmarks/`. It compares four mappers across seven scenarios using BenchmarkDotNet's default JIT job on .NET 10, with `[MemoryDiagnoser]` enabled. Each scenario uses identical source/destination types across all mappers; AutoMapper's `IMapper` is built once in `[GlobalSetup]` so profile compilation is excluded from per-iteration cost. Hand-written rows use inline `new Dst(...)` with no helper indirection.
 
+AutoMapper 16.x is commercially licensed; the benchmark project is dev-only and not distributed (`IsPackable=false`). Cited numbers are evaluation-fair-use only.
+
 ### Results
 
 <!-- BENCH:START -->
@@ -247,6 +249,11 @@ BenchmarkDotNet v0.15.8, Windows 11 (10.0.26200.8246/25H2/2025Update/HudsonValle
 
 <!-- BENCH:END -->
 
+### Caveats
+
+- **TryMap row, Mapperly column.** Mapperly has no native fallible-mapping primitive; this row measures its non-fallible `Map` call as a reference point for the cost ZA's `TryMap` pays beyond happy-path mapping. AutoMapper is omitted entirely since it has no equivalent.
+- **Collection row, Mapperly column.** The Collection scenario's Mapperly row uses `Select(...).ToList()` rather than Mapperly's auto-emitted `partial List<FlatDst> Map(List<FlatSrc>)` overload. Numbers reflect the LINQ-fallback path, not the bulk-overload path.
+
 ### Reproducing
 
 ```bash
@@ -256,12 +263,18 @@ pwsh tools/import-benchmarks.ps1
 
 The first command takes ~15 minutes; the second is instant. Re-commit `docs/performance.md` after the splice.
 
+```bash
+# If you switched branches recently, clear stale generator output:
+rm -rf benchmarks/ZeroAlloc.Mapping.Benchmarks/generated
+```
+
 ### Reading the numbers
 
 - **HandWritten** is the speed-of-light. ZeroAlloc.Mapping should match it (or be within noise) for FlatIdentity and UpdateInPlace.
 - **Mapperly** should be within ~30% of ZeroAlloc.Mapping on most scenarios — both are source generators emitting nearly identical IL, so any large gap is worth investigating.
 - **AutoMapper** typically lands 10x–100x slower with non-zero allocation everywhere. That gap is the cost of runtime expression-tree compilation and per-call rule lookup.
 - The `Allocated` column is the load-bearing one for "zero-allocation" claims. If ZeroAlloc.Mapping shows non-zero bytes, the destination type itself is being measured (records allocate; structs don't) — see the budget table above for per-shape baselines.
+- Differences below ~10ns on the FlatIdentity table are within JIT noise (see the StdDev column); the headline is the UpdateInPlace ratio (18.66× for AutoMapper).
 
 ### What's not measured here
 
