@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.1](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/compare/v1.4.0...v1.4.1) (2026-05-12)
+
+
+### Documentation
+
+* **readme:** replace placeholder with full README showcasing benchmarks ([#14](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/issues/14)) ([fa0517c](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/fa0517c530193f5fe43fcbb67ffd0edd454c65b2))
+
 ## [1.4.0](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/compare/v1.3.1...v1.4.0) (2026-05-10)
 
 
