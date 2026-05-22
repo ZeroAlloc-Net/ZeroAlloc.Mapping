@@ -9,6 +9,10 @@
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.*" />
     <PackageReference Include="xunit" Version="2.*" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.*" />
+    <PackageReference Include="ZeroAlloc.TestHelpers" Version="1.*">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>contentfiles;build</IncludeAssets>
+    </PackageReference>
   </ItemGroup>
   <ItemGroup>
     <Using Include="Xunit" />
@@ -18,9 +22,5 @@
     <ProjectReference Include="..\..\src\ZeroAlloc.Mapping.Generator\ZeroAlloc.Mapping.Generator.csproj"
                       OutputItemType="Analyzer"
                       ReferenceOutputAssembly="false" />
-  </ItemGroup>
-  <ItemGroup>
-    <Compile Include="..\..\samples\ZeroAlloc.Mapping.AotSmoke\Internal\AllocationGate.cs"
-             Link="Internal\AllocationGate.cs" />
   </ItemGroup>
 </Project>

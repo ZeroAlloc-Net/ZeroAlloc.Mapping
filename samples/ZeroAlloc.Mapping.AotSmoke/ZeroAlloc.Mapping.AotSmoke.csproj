@@ -25,4 +25,11 @@
                       ReferenceOutputAssembly="false"
                       UndefineProperties="PublishAot" />
   </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="ZeroAlloc.TestHelpers" Version="1.*">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>contentfiles;build</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
 </Project>

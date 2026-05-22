@@ -1,5 +1,5 @@
 using ZeroAlloc.Mapping;
-using ZeroAlloc.Mapping.AotSmoke.Internal;
+using ZeroAlloc.TestHelpers;
 using ZeroAlloc.Results;
 
 namespace ZeroAlloc.Mapping.AotSmoke;
