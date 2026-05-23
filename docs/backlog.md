@@ -14,27 +14,14 @@ Items deferred from v1.0.0. Each entry has a **Graduation signal** that, when me
 > [`plans/2026-05-08-mapping-v1.3-extensions-design.md`](plans/2026-05-08-mapping-v1.3-extensions-design.md).
 > True open-generic mappings remain deferred (C# generic-attribute limitations).
 
+> **Update 2026-05-23:** B3 (IQueryable projections), B6 (cycle-safe mapping),
+> and B11 (deep-clone mode) graduated into v1.4 — see
+> [`plans/2026-05-23-mapping-v1.4-extensions-design.md`](plans/2026-05-23-mapping-v1.4-extensions-design.md).
+> B7 (private member mapping) remains the deliberate out-of-scope-by-design
+> policy statement. B12 (DeepClone+CycleSafe integration) is a follow-up
+> from v1.4 — see `B12` below.
+
 For v1 scope, see [`plans/2026-05-07-mapping-design.md`](plans/2026-05-07-mapping-design.md).
-
----
-
-## B3 — `IQueryable` projections
-
-**What.** Compile-time `Expression<Func<TSrc, TDst>>` emission for use with EF Core's `Select(...)`.
-
-**Why deferred.** `ZeroAlloc.Specification` already covers expression-tree construction; double coverage risks divergence.
-
-**Graduation signal.** EF Core users specifically ask AND `ZeroAlloc.Specification` doesn't already cover it.
-
----
-
-## B6 — Reference handling / cycle detection
-
-**What.** Detect and break cycles when source graph contains back-references.
-
-**Why deferred.** Pure DTOs in vertical-slice architecture don't form cycles. Detection adds per-call dictionary tracking, defeating the zero-allocation guarantee.
-
-**Graduation signal.** Real graph-shaped domain (e.g. ORM-heavy aggregate with parent/child back-refs).
 
 ---
 
@@ -45,16 +32,6 @@ For v1 scope, see [`plans/2026-05-07-mapping-design.md`](plans/2026-05-07-mappin
 **Why deferred.** Encapsulation-breaking by design. Documented as out-of-scope-by-design.
 
 **Graduation signal.** Unlikely — keep on the list as a public statement of policy.
-
----
-
-## B11 — `UseDeepCloning` mode
-
-**What.** Default to deep-cloning collections and nested objects instead of shallow copy.
-
-**Why deferred.** Niche — opaque deep-cloning makes generated code hard to audit. Shallow-by-default + explicit nested `[Map]` declarations is the family idiom.
-
-**Graduation signal.** Real consumer hits this.
 
 ---
 
