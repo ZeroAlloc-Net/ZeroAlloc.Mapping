@@ -118,6 +118,42 @@ public sealed class MappingGenerator : IIncrementalGenerator
                 }
             }
 
+            // ZAMP019 / ZAMP020 — DeepClone walks the reachable-type graph at compile time.
+            // ZAMP019 fires when a reached type cannot be cloned (no public ctor / cannot
+            // satisfy the primary ctor from src.*). ZAMP020 fires when the type graph contains
+            // a cycle and CycleSafe = false (CycleSafe + DeepClone resolves cycles at runtime
+            // via the tracker — that combo is handled by EmitCycleSafeMapPair).
+            if (decl.DeepClone)
+            {
+                var firedZamp019 = new System.Collections.Generic.HashSet<string>(System.StringComparer.Ordinal);
+                var firedZamp020 = new System.Collections.Generic.HashSet<string>(System.StringComparer.Ordinal);
+                foreach (var rt in DeepCloneEmitter.WalkReachableReferenceTypes(decl, cls, comp))
+                {
+                    if (rt.IsCycle)
+                    {
+                        if (!decl.CycleSafe && firedZamp020.Add(rt.DestinationFqn))
+                        {
+                            spc.ReportDiagnostic(Diagnostic.Create(
+                                Diagnostics.ZAMP020_DeepCloneCyclicTypeGraph,
+                                decl.Location,
+                                decl.SourceTypeFqn, decl.DestinationTypeFqn,
+                                rt.DestinationFqn));
+                        }
+                        continue;
+                    }
+
+                    if (!DeepCloneEmitter.IsCloneable(rt.Destination, rt.Source) &&
+                        firedZamp019.Add(rt.DestinationFqn))
+                    {
+                        spc.ReportDiagnostic(Diagnostic.Create(
+                            Diagnostics.ZAMP019_DeepCloneUncloneableType,
+                            decl.Location,
+                            decl.SourceTypeFqn, decl.DestinationTypeFqn,
+                            rt.DestinationFqn));
+                    }
+                }
+            }
+
             if (decl.Projection)
             {
                 if (!string.IsNullOrEmpty(cls.Culture))

@@ -31,7 +31,14 @@ internal static class MapEmitter
             if (decl.Kind == MappingKind.TryMap)
                 TryMapEmitter.EmitTryMapMethod(sb, decl, match, cls, comp, src, dst);
             else if (decl.CycleSafe)
+                // CycleSafe routes through the tracker-threaded pair. When combined with
+                // DeepClone, the per-property emit is still the in-place builder shape
+                // (ResolveCycleSafeExpression) — the tracker resolves cycles at runtime so
+                // ZAMP020 does not fire. Pure DeepClone (without CycleSafe) goes through
+                // DeepCloneEmitter to emit literal per-property clones.
                 EmitCycleSafeMapPair(sb, decl, cls, comp, src, dst);
+            else if (decl.DeepClone)
+                DeepCloneEmitter.EmitDeepCloneMethod(sb, decl, cls, comp, src, dst);
             else
                 EmitMapMethod(sb, decl, match, cls, comp, src, dst);
 
