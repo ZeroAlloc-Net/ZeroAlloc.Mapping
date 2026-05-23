@@ -23,10 +23,13 @@ Source-generated, zero-allocation, AOT-safe Command→Domain→DTO mapper for .N
 | 7 | [Update-in-Place](update-in-place.md) | `void Map(TSrc, TDst)` for entity-tracker scenarios |
 | 8 | [Hooks](hooks.md) | `[BeforeMap]` and `[AfterMap]` |
 | 9 | [Culture & Strict Mode](culture-and-strict.md) | `[MappingCulture]`, `[StrictSourceMapping]`, `[CaseInsensitiveMapping]` |
-| 10 | [Diagnostics](diagnostics.md) | ZAMP001-016 reference |
+| 10 | [Diagnostics](diagnostics.md) | ZAMP001-020 reference |
 | 11 | [Performance](performance.md) | Zero-alloc internals, allocation budgets, AOT |
 | 12 | [Advanced](advanced.md) | `MappingError` tree, edge cases, Result integration |
 | 13 | [Testing](testing.md) | Snapshot patterns, allocation gates, generator harness |
+| 14 | [IQueryable Projection](iqueryable-projection.md) | `[Map<,>(Projection = true)]` — EF Core expression trees |
+| 15 | [Cycle-Safe Mapping](cycle-safe-mapping.md) | `[Map<,>(CycleSafe = true)]` — ORM aggregates with back-refs |
+| 16 | [Deep Clone](deep-clone.md) | `[Map<,>(DeepClone = true)]` — whole-graph deep clone |
 
 ## Cookbook
 

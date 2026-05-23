@@ -123,7 +123,13 @@ public sealed class MappingGenerator : IIncrementalGenerator
             // satisfy the primary ctor from src.*). ZAMP020 fires when the type graph contains
             // a cycle and CycleSafe = false (CycleSafe + DeepClone resolves cycles at runtime
             // via the tracker — that combo is handled by EmitCycleSafeMapPair).
-            if (decl.DeepClone)
+            // Symmetric with the ZAMP020 suppression inside the loop below: when
+            // CycleSafe = true, MapEmitter routes through EmitCycleSafeMapPair and the
+            // DeepCloneEmitter literal walk does NOT run. Reporting ZAMP019 uncloneable-
+            // type diagnostics for a code path the generator never executes would be
+            // misleading. The CycleSafe routing wins; deep-clone literal walks for the
+            // CycleSafe + DeepClone combination are deferred (see docs/backlog.md B12).
+            if (decl.DeepClone && !decl.CycleSafe)
             {
                 var firedZamp019 = new System.Collections.Generic.HashSet<string>(System.StringComparer.Ordinal);
                 var firedZamp020 = new System.Collections.Generic.HashSet<string>(System.StringComparer.Ordinal);
@@ -131,7 +137,9 @@ public sealed class MappingGenerator : IIncrementalGenerator
                 {
                     if (rt.IsCycle)
                     {
-                        if (!decl.CycleSafe && firedZamp020.Add(rt.DestinationFqn))
+                        // decl.CycleSafe is always false here (outer guard skips
+                        // the entire DeepClone walk when CycleSafe = true).
+                        if (firedZamp020.Add(rt.DestinationFqn))
                         {
                             spc.ReportDiagnostic(Diagnostic.Create(
                                 Diagnostics.ZAMP020_DeepCloneCyclicTypeGraph,
