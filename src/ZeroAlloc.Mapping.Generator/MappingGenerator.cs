@@ -89,6 +89,38 @@ public sealed class MappingGenerator : IIncrementalGenerator
 
         foreach (var decl in cls.Mappings)
         {
+            // ZAMP017 — [Map(Projection = true)] is incompatible with hooks,
+            // culture, and polymorphic dispatch (EF Core's LINQ translator
+            // cannot model them). Direct case only — Task 4 will extend this
+            // to nested mappings inlined into the projection.
+            if (decl.Projection)
+            {
+                if (!string.IsNullOrEmpty(cls.Culture))
+                {
+                    spc.ReportDiagnostic(Diagnostic.Create(
+                        Diagnostics.ZAMP017_ProjectionIncompatibleFeature,
+                        decl.Location,
+                        decl.SourceTypeFqn, decl.DestinationTypeFqn,
+                        "[MappingCulture] is set on the enclosing class"));
+                }
+                if (cls.Hooks is not null && cls.Hooks.Count > 0)
+                {
+                    spc.ReportDiagnostic(Diagnostic.Create(
+                        Diagnostics.ZAMP017_ProjectionIncompatibleFeature,
+                        decl.Location,
+                        decl.SourceTypeFqn, decl.DestinationTypeFqn,
+                        "the enclosing class declares [BeforeMap] / [AfterMap] hooks"));
+                }
+                if (cls.PolymorphicDecls is not null && cls.PolymorphicDecls.Count > 0)
+                {
+                    spc.ReportDiagnostic(Diagnostic.Create(
+                        Diagnostics.ZAMP017_ProjectionIncompatibleFeature,
+                        decl.Location,
+                        decl.SourceTypeFqn, decl.DestinationTypeFqn,
+                        "[PolymorphicMap<,>] is declared on the enclosing class"));
+                }
+            }
+
             var src = comp.GetTypeByMetadataName(StripGlobal(decl.SourceTypeFqn));
             var dst = comp.GetTypeByMetadataName(StripGlobal(decl.DestinationTypeFqn));
             if (src is null || dst is null) continue;
