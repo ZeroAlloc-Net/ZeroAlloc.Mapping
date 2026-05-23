@@ -200,6 +200,25 @@ public static partial class M { }
 `[MapperIgnoreTarget]` is only effective on destination **properties**, not constructor parameters. If a constructor parameter has no matching source, the generator can't omit it from the `new TDst(...)` call. Work around it by lifting the field to an init-only property and ignoring it there, or by routing through a builder.
 :::
 
+## `[Map<,>]` Properties — Opt-In Feature Switches
+
+Three boolean properties on `[Map<TSrc, TDst>]` toggle additional emission shapes. Each is opt-in; the default value (`false`) preserves the standard `Map(TSrc) → TDst` behaviour documented above.
+
+| Property | What it adds | Reference |
+|---|---|---|
+| `Projection = true` | Static `Expression<Func<TSrc, TDst>>` property suitable for `IQueryable.Select(...)` (EF Core). | [IQueryable Projection](iqueryable-projection.md) |
+| `CycleSafe = true` | Paired entry + recursive overload that threads an `IDictionary<object, object>` tracker to break cycles in object graphs. | [Cycle-Safe Mapping](cycle-safe-mapping.md) |
+| `DeepClone = true` | Walks the reachable type graph at generator time and emits literal `new T { ... }` clones for every reachable type. | [Deep Clone](deep-clone.md) |
+
+The properties are independent and (with a few constraints) compose: `DeepClone = true` with `CycleSafe = true` for cyclic clone graphs is the canonical combination. `Projection = true` is incompatible with hooks, `[MappingCulture]`, and `[PolymorphicMap<,>]` — see [ZAMP017](diagnostics.md#zamp017--mapprojection--true-uses-a-feature-ef-core-cannot-translate).
+
+```csharp
+[Map<Order, OrderDto>(Projection = true)]       // EF Core projection
+[Map<Customer, CustomerDto>(CycleSafe = true)]  // ORM aggregate with back-refs
+[Map<Snapshot, Snapshot>(DeepClone = true)]     // whole-graph clone
+public static partial class M { }
+```
+
 ## `[Obsolete]` Source / Destination — Silent Skip
 
 The generator transparently filters `[Obsolete]`-marked source properties and destination constructor parameters from the matching pass. This is what lets you deprecate a field without immediately breaking every mapper that references it — the build keeps working as if the field weren't there.

@@ -1,13 +1,13 @@
 ---
 id: diagnostics
 title: Diagnostics
-description: Compile-time diagnostics ZAMP001-ZAMP016 — every error and warning the generator can emit.
+description: Compile-time diagnostics ZAMP001-ZAMP020 — every error and warning the generator can emit.
 sidebar_position: 10
 ---
 
 # Diagnostics
 
-The generator emits sixteen distinct compile-time diagnostics. Errors fail the build; Warnings are advisory and surface in the IDE. All use the `ZAMP` prefix and the `ZeroAlloc.Mapping` category, so a `<NoWarn>` or `<WarningsAsErrors>` rule that targets `ZAMP*` covers every diagnostic the generator produces.
+The generator emits twenty distinct compile-time diagnostics. Errors fail the build; Warnings are advisory and surface in the IDE. All use the `ZAMP` prefix and the `ZeroAlloc.Mapping` category, so a `<NoWarn>` or `<WarningsAsErrors>` rule that targets `ZAMP*` covers every diagnostic the generator produces.
 
 The source-of-truth for descriptors is `src/ZeroAlloc.Mapping.Generator/Diagnostics.cs`.
 
@@ -31,6 +31,10 @@ The source-of-truth for descriptors is `src/ZeroAlloc.Mapping.Generator/Diagnost
 | ZAMP014 | Warning | `[PolymorphicMap]` over a sealed type is degenerate |
 | ZAMP015 | Error | `[PolymorphicMap]` mixes `[Map]` and `[TryMap]` derived cases |
 | ZAMP016 | Warning | Duplicate `[MappingCulture]` declarations |
+| ZAMP017 | Error | `[Map(Projection = true)]` uses a feature EF Core cannot translate |
+| ZAMP018 | Error | `[Map(CycleSafe = true)]` references a non-CycleSafe nested mapping |
+| ZAMP019 | Error | `[Map(DeepClone = true)]` reaches an uncloneable type |
+| ZAMP020 | Error | `[Map(DeepClone = true)]` walks a cyclic type graph without `CycleSafe = true` |
 
 ## ZAMP001 — Required destination property has no source
 
@@ -416,7 +420,110 @@ public static partial class M { }
 
 **Fix**: Keep one `[MappingCulture]`, drop the duplicate.
 
+## ZAMP017 — `[Map(Projection = true)]` uses a feature EF Core cannot translate
+
+**Severity**: Error.
+
+**Trigger**: A `[Map<,>(Projection = true)]` is declared on a class that also carries one of: `[BeforeMap]`/`[AfterMap]` hooks, `[MappingCulture]`, or `[PolymorphicMap<,>]`. The projection's emitted `Expression<Func<TSrc, TDst>>` cannot reference those features — EF Core's LINQ translator can't walk method calls, embedded culture parsing, or runtime-type switches. Also fires transitively when a nested mapping inlined into the projection violates the same constraint.
+
+**Triggering code** (from `ProjectionDiagnosticTests.ZAMP017_FiresWhen_Projection_With_MappingCulture`):
+
+```csharp
+public sealed record Src(string Quantity);
+public sealed record Dst(int Quantity);
+[Map<Src, Dst>(Projection = true)]
+[MappingCulture("nl-NL")]
+public static partial class M { }
+```
+
+**Fix**: Move the projection-eligible mapping to a separate `static partial class` that doesn't carry the incompatible feature, or drop `Projection = true` if you don't need EF Core translation. See [IQueryable Projection](iqueryable-projection.md).
+
+```csharp
+[Map<Src, Dst>(Projection = true)]
+public static partial class ReadMappings { }
+
+[Map<Src, Dst>]
+[MappingCulture("nl-NL")]
+public static partial class WriteMappings { }
+```
+
+## ZAMP018 — `[Map(CycleSafe = true)]` references a non-CycleSafe nested mapping
+
+**Severity**: Error.
+
+**Trigger**: A `[Map<,>(CycleSafe = true)]` references a nested `[Map<,>]` (on the same class) that is not also declared `CycleSafe = true`. The cycle-safe recursion would lose the tracker on the nested call, and a back-reference through the nested type would blow the stack at runtime.
+
+**Triggering code** (from `CycleSafeDiagnosticTests.ZAMP018_FiresWhen_Nested_NotCycleSafe`):
+
+```csharp
+public sealed class Customer { public List<Order> Orders { get; set; } = new(); }
+public sealed class Order { public Customer Customer { get; set; } = null!; }
+public sealed class CustomerDto { public List<OrderDto> Orders { get; set; } = new(); }
+public sealed class OrderDto { public CustomerDto Customer { get; set; } = null!; }
+[Map<Customer, CustomerDto>(CycleSafe = true)]
+[Map<Order, OrderDto>]
+public static partial class M { }
+```
+
+**Fix**: Mark the nested mapping `CycleSafe = true` too. The check is transitive — every mapping reachable from a `CycleSafe = true` declaration must also be `CycleSafe = true`. See [Cycle-Safe Mapping](cycle-safe-mapping.md).
+
+```csharp
+[Map<Customer, CustomerDto>(CycleSafe = true)]
+[Map<Order, OrderDto>(CycleSafe = true)]
+public static partial class M { }
+```
+
+## ZAMP019 — `[Map(DeepClone = true)]` reaches an uncloneable type
+
+**Severity**: Error.
+
+**Trigger**: The deep-clone walker reaches a type that has no public parameterless constructor and no fully-covering constructor for its mapped properties — typically an abstract class, a type whose only constructor takes parameters the walker cannot bind, or a type with init-only properties not covered by a constructor parameter.
+
+**Triggering code** (from `DeepCloneDiagnosticTests.ZAMP019_FiresWhen_Reaches_AbstractType`):
+
+```csharp
+public abstract class AbstractBase { public int Id { get; set; } }
+public sealed class Holder { public AbstractBase Inner { get; set; } = null!; }
+[Map<Holder, Holder>(DeepClone = true)]
+public static partial class M { }
+```
+
+**Fix**: Declare an explicit nested `[Map<AbstractBase, AbstractBase>]` (e.g. dispatched via `[PolymorphicMap]`) that takes over the walk, or change the shape of the uncloneable type so it has a parameterless ctor and settable properties. See [Deep Clone](deep-clone.md).
+
+```csharp
+public sealed class ConcreteImpl : AbstractBase { }
+[Map<ConcreteImpl, ConcreteImpl>]
+[PolymorphicMap<AbstractBase, AbstractBase>]
+[Map<Holder, Holder>(DeepClone = true)]
+public static partial class M { }
+```
+
+## ZAMP020 — `[Map(DeepClone = true)]` walks a cyclic type graph without `CycleSafe = true`
+
+**Severity**: Error.
+
+**Trigger**: The deep-clone walker hits a cycle in the type graph (e.g. `Customer` references `Order`s, each `Order` references `Customer`) and the declaration is not also `CycleSafe = true`. Without runtime tracking, the emitted code would recurse infinitely on any instance graph that exercises the cycle.
+
+**Triggering code** (from `DeepCloneDiagnosticTests.ZAMP020_FiresWhen_TypeGraph_Cycles_Without_CycleSafe`):
+
+```csharp
+public sealed class Customer { public List<Order> Orders { get; set; } = new(); }
+public sealed class Order { public Customer Customer { get; set; } = null!; }
+[Map<Customer, Customer>(DeepClone = true)]
+public static partial class M { }
+```
+
+**Fix**: Compose `DeepClone = true` with `CycleSafe = true`. The walker emits literal `new T { ... }` clones and the cycle-safe machinery threads the runtime tracker through them. See [Deep Clone](deep-clone.md#composing-with-cyclesafe--zamp020) and [Cycle-Safe Mapping](cycle-safe-mapping.md).
+
+```csharp
+[Map<Customer, Customer>(DeepClone = true, CycleSafe = true)]
+public static partial class M { }
+```
+
 ## Where to next
 
 - Performance: [Performance](performance.md).
 - Testing diagnostics: [Testing](testing.md).
+- Projection feature reference: [IQueryable Projection](iqueryable-projection.md).
+- Cycle-safe feature reference: [Cycle-Safe Mapping](cycle-safe-mapping.md).
+- Deep-clone feature reference: [Deep Clone](deep-clone.md).

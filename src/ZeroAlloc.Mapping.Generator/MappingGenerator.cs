@@ -89,6 +89,107 @@ public sealed class MappingGenerator : IIncrementalGenerator
 
         foreach (var decl in cls.Mappings)
         {
+            // ZAMP017 — [Map(Projection = true)] is incompatible with hooks,
+            // culture, and polymorphic dispatch (EF Core's LINQ translator
+            // cannot model them). Transitive note: when a nested [Map<,>] is
+            // declared in the SAME MapperClass, the outer decl already shares
+            // cls.Culture / cls.Hooks / cls.PolymorphicDecls and the direct
+            // check below catches it. Cross-class transitive checking (when
+            // the nested mapping lives in a *different* partial-class instance)
+            // would require a cross-class registry of MapperClass metadata,
+            // which the IncrementalGenerator pipeline does not currently
+            // expose. Deferred to a follow-up commit.
+            // ZAMP018 — [Map(CycleSafe = true)] requires every nested mapping reached
+            // from the property graph to also be CycleSafe = true (transitive enforcement).
+            // Cross-class lookup (the nested decl living in a different MapperClass) is
+            // deferred — same caveat as ZAMP017's transitive note above.
+            if (decl.CycleSafe)
+            {
+                foreach (var (nestedSrcFqn, nestedDstFqn) in WalkNestedMappingFqns(decl, cls, comp))
+                {
+                    if (!IsCycleSafe(nestedSrcFqn, nestedDstFqn, cls))
+                    {
+                        spc.ReportDiagnostic(Diagnostic.Create(
+                            Diagnostics.ZAMP018_CycleSafeMissingOnNested,
+                            decl.Location,
+                            decl.SourceTypeFqn, decl.DestinationTypeFqn,
+                            $"{nestedSrcFqn} -> {nestedDstFqn}"));
+                    }
+                }
+            }
+
+            // ZAMP019 / ZAMP020 — DeepClone walks the reachable-type graph at compile time.
+            // ZAMP019 fires when a reached type cannot be cloned (no public ctor / cannot
+            // satisfy the primary ctor from src.*). ZAMP020 fires when the type graph contains
+            // a cycle and CycleSafe = false (CycleSafe + DeepClone resolves cycles at runtime
+            // via the tracker — that combo is handled by EmitCycleSafeMapPair).
+            // Symmetric with the ZAMP020 suppression inside the loop below: when
+            // CycleSafe = true, MapEmitter routes through EmitCycleSafeMapPair and the
+            // DeepCloneEmitter literal walk does NOT run. Reporting ZAMP019 uncloneable-
+            // type diagnostics for a code path the generator never executes would be
+            // misleading. The CycleSafe routing wins; deep-clone literal walks for the
+            // CycleSafe + DeepClone combination are deferred (see docs/backlog.md B12).
+            if (decl.DeepClone && !decl.CycleSafe)
+            {
+                var firedZamp019 = new System.Collections.Generic.HashSet<string>(System.StringComparer.Ordinal);
+                var firedZamp020 = new System.Collections.Generic.HashSet<string>(System.StringComparer.Ordinal);
+                foreach (var rt in DeepCloneEmitter.WalkReachableReferenceTypes(decl, cls, comp))
+                {
+                    if (rt.IsCycle)
+                    {
+                        // decl.CycleSafe is always false here (outer guard skips
+                        // the entire DeepClone walk when CycleSafe = true).
+                        if (firedZamp020.Add(rt.DestinationFqn))
+                        {
+                            spc.ReportDiagnostic(Diagnostic.Create(
+                                Diagnostics.ZAMP020_DeepCloneCyclicTypeGraph,
+                                decl.Location,
+                                decl.SourceTypeFqn, decl.DestinationTypeFqn,
+                                rt.DestinationFqn));
+                        }
+                        continue;
+                    }
+
+                    if (!DeepCloneEmitter.IsCloneable(rt.Destination, rt.Source) &&
+                        firedZamp019.Add(rt.DestinationFqn))
+                    {
+                        spc.ReportDiagnostic(Diagnostic.Create(
+                            Diagnostics.ZAMP019_DeepCloneUncloneableType,
+                            decl.Location,
+                            decl.SourceTypeFqn, decl.DestinationTypeFqn,
+                            rt.DestinationFqn));
+                    }
+                }
+            }
+
+            if (decl.Projection)
+            {
+                if (!string.IsNullOrEmpty(cls.Culture))
+                {
+                    spc.ReportDiagnostic(Diagnostic.Create(
+                        Diagnostics.ZAMP017_ProjectionIncompatibleFeature,
+                        decl.Location,
+                        decl.SourceTypeFqn, decl.DestinationTypeFqn,
+                        "[MappingCulture] is set on the enclosing class"));
+                }
+                if (cls.Hooks is not null && cls.Hooks.Count > 0)
+                {
+                    spc.ReportDiagnostic(Diagnostic.Create(
+                        Diagnostics.ZAMP017_ProjectionIncompatibleFeature,
+                        decl.Location,
+                        decl.SourceTypeFqn, decl.DestinationTypeFqn,
+                        "the enclosing class declares [BeforeMap] / [AfterMap] hooks"));
+                }
+                if (cls.PolymorphicDecls is not null && cls.PolymorphicDecls.Count > 0)
+                {
+                    spc.ReportDiagnostic(Diagnostic.Create(
+                        Diagnostics.ZAMP017_ProjectionIncompatibleFeature,
+                        decl.Location,
+                        decl.SourceTypeFqn, decl.DestinationTypeFqn,
+                        "[PolymorphicMap<,>] is declared on the enclosing class"));
+                }
+            }
+
             var src = comp.GetTypeByMetadataName(StripGlobal(decl.SourceTypeFqn));
             var dst = comp.GetTypeByMetadataName(StripGlobal(decl.DestinationTypeFqn));
             if (src is null || dst is null) continue;
@@ -422,4 +523,57 @@ public sealed class MappingGenerator : IIncrementalGenerator
 
     private static string StripGlobal(string fqn) =>
         fqn.StartsWith("global::", System.StringComparison.Ordinal) ? fqn.Substring(8) : fqn;
+
+    /// <summary>
+    /// Enumerates the (sourceFqn, destinationFqn) pairs of every nested mapping reached
+    /// from <paramref name="decl"/> via its declared property graph — used by ZAMP018
+    /// (CycleSafe transitivity) to verify each hop also opts in to the tracker.
+    /// </summary>
+    private static System.Collections.Generic.IEnumerable<(string SrcFqn, string DstFqn)>
+        WalkNestedMappingFqns(MappingDecl decl, MapperClass cls, Compilation comp)
+    {
+        var src = comp.GetTypeByMetadataName(StripGlobal(decl.SourceTypeFqn));
+        var dst = comp.GetTypeByMetadataName(StripGlobal(decl.DestinationTypeFqn));
+        if (src is null || dst is null) yield break;
+
+        var match = PropertyMatcher.Match(src, dst, decl.UserPartialMethod, cls.CaseInsensitive);
+        if (match is null) yield break;
+
+        foreach (var m in match.Mappings)
+        {
+            // Direct nested object mapping.
+            var nested = NestedMappingResolver.FindNestedMapper(cls, m.SourceType, m.TargetType);
+            if (nested is not null)
+            {
+                yield return (
+                    m.SourceType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
+                    m.TargetType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat));
+                continue;
+            }
+
+            // Collection of nested mappings.
+            var srcColl = NestedMappingResolver.AsCollection(m.SourceType);
+            var dstColl = NestedMappingResolver.AsCollection(m.TargetType);
+            if (srcColl is not null && dstColl is not null)
+            {
+                var nestedElem = NestedMappingResolver.FindNestedMapper(cls, srcColl.Value.Element, dstColl.Value.Element);
+                if (nestedElem is not null)
+                {
+                    yield return (
+                        srcColl.Value.Element.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
+                        dstColl.Value.Element.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat));
+                }
+            }
+        }
+    }
+
+    private static bool IsCycleSafe(string srcFqn, string dstFqn, MapperClass cls)
+    {
+        foreach (var d in cls.Mappings)
+        {
+            if (d.SourceTypeFqn == srcFqn && d.DestinationTypeFqn == dstFqn && d.CycleSafe)
+                return true;
+        }
+        return false;
+    }
 }

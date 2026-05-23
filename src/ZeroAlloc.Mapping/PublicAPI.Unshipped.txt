@@ -1,6 +1,12 @@
 #nullable enable
 ZeroAlloc.Mapping.MapAttribute<TSource, TDestination>
+ZeroAlloc.Mapping.MapAttribute<TSource, TDestination>.CycleSafe.get -> bool
+ZeroAlloc.Mapping.MapAttribute<TSource, TDestination>.CycleSafe.init -> void
+ZeroAlloc.Mapping.MapAttribute<TSource, TDestination>.DeepClone.get -> bool
+ZeroAlloc.Mapping.MapAttribute<TSource, TDestination>.DeepClone.init -> void
 ZeroAlloc.Mapping.MapAttribute<TSource, TDestination>.MapAttribute() -> void
+ZeroAlloc.Mapping.MapAttribute<TSource, TDestination>.Projection.get -> bool
+ZeroAlloc.Mapping.MapAttribute<TSource, TDestination>.Projection.init -> void
 ZeroAlloc.Mapping.TryMapAttribute<TSource, TDestination>
 ZeroAlloc.Mapping.TryMapAttribute<TSource, TDestination>.TryMapAttribute() -> void
 ZeroAlloc.Mapping.ReverseMapAttribute<TSource, TDestination>

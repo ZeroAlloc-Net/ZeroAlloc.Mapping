@@ -31,6 +31,9 @@ internal sealed record MappingDecl(
     Microsoft.CodeAnalysis.IMethodSymbol? UserPartialMethod = null,
     bool FromReverse = false,
     Microsoft.CodeAnalysis.IMethodSymbol? UpdateInPlacePartial = null,
+    bool Projection = false,
+    bool CycleSafe = false,
+    bool DeepClone = false,
     Microsoft.CodeAnalysis.INamedTypeSymbol? SourceTypeSymbol = null,
     Microsoft.CodeAnalysis.INamedTypeSymbol? DestinationTypeSymbol = null);
 

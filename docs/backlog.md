@@ -14,27 +14,14 @@ Items deferred from v1.0.0. Each entry has a **Graduation signal** that, when me
 > [`plans/2026-05-08-mapping-v1.3-extensions-design.md`](plans/2026-05-08-mapping-v1.3-extensions-design.md).
 > True open-generic mappings remain deferred (C# generic-attribute limitations).
 
+> **Update 2026-05-23:** B3 (IQueryable projections), B6 (cycle-safe mapping),
+> and B11 (deep-clone mode) graduated into v1.4 — see
+> [`plans/2026-05-23-mapping-v1.4-extensions-design.md`](plans/2026-05-23-mapping-v1.4-extensions-design.md).
+> B7 (private member mapping) remains the deliberate out-of-scope-by-design
+> policy statement. B12 (DeepClone+CycleSafe integration) is a follow-up
+> from v1.4 — see `B12` below.
+
 For v1 scope, see [`plans/2026-05-07-mapping-design.md`](plans/2026-05-07-mapping-design.md).
-
----
-
-## B3 — `IQueryable` projections
-
-**What.** Compile-time `Expression<Func<TSrc, TDst>>` emission for use with EF Core's `Select(...)`.
-
-**Why deferred.** `ZeroAlloc.Specification` already covers expression-tree construction; double coverage risks divergence.
-
-**Graduation signal.** EF Core users specifically ask AND `ZeroAlloc.Specification` doesn't already cover it.
-
----
-
-## B6 — Reference handling / cycle detection
-
-**What.** Detect and break cycles when source graph contains back-references.
-
-**Why deferred.** Pure DTOs in vertical-slice architecture don't form cycles. Detection adds per-call dictionary tracking, defeating the zero-allocation guarantee.
-
-**Graduation signal.** Real graph-shaped domain (e.g. ORM-heavy aggregate with parent/child back-refs).
 
 ---
 
@@ -48,10 +35,10 @@ For v1 scope, see [`plans/2026-05-07-mapping-design.md`](plans/2026-05-07-mappin
 
 ---
 
-## B11 — `UseDeepCloning` mode
+## B12 — `DeepClone + CycleSafe` integration
 
-**What.** Default to deep-cloning collections and nested objects instead of shallow copy.
+**What.** When both `DeepClone = true` and `CycleSafe = true` are set on a `[Map<,>]`, emit the deep-clone literal walk with the runtime tracker threaded through every nested clone call. Currently the CycleSafe routing fork wins and DeepClone literal walks don't activate.
 
-**Why deferred.** Niche — opaque deep-cloning makes generated code hard to audit. Shallow-by-default + explicit nested `[Map]` declarations is the family idiom.
+**Why deferred.** Combining the two emitters cleanly requires either (a) merging the walks into a single emit pipeline, or (b) calling DeepCloneEmitter with a tracker parameter that mutates the property-assignment emit. Both are non-trivial and weren't needed by the v1.4 graduation cases. Users who need deep-clone of a cyclic graph today can declare explicit nested `[Map<,>]` for each type — CycleSafe's ZAMP018 enforces full coverage.
 
-**Graduation signal.** Real consumer hits this.
+**Graduation signal.** A real consumer hits the case where DeepClone+CycleSafe should literal-walk and finds the explicit-nested workaround too noisy.

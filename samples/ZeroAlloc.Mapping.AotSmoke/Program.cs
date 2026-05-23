@@ -91,6 +91,42 @@ public sealed record AotDogDto(string Name) : AotAnimalDto;
 [PolymorphicMap<AotAnimal, AotAnimalDto>]
 public static partial class AnimalMappings { }
 
+// v1.4 B3 — Projection fixture (LINQ-to-Objects path; EF Core not available in AOT smoke).
+public sealed record ProjSrc(int Id, string Name);
+public sealed record ProjDst(int Id, string Name);
+
+[Map<ProjSrc, ProjDst>(Projection = true)]
+public static partial class ProjMappings { }
+
+// v1.4 B6 — Cycle-safe self-ref fixture (class with parameterless ctor + settable properties).
+public sealed class NodeSrc { public string Name { get; set; } = ""; public NodeSrc? Self { get; set; } }
+public sealed class NodeDst { public string Name { get; set; } = ""; public NodeDst? Self { get; set; } }
+
+[Map<NodeSrc, NodeDst>(CycleSafe = true)]
+public static partial class NodeMappings { }
+
+// v1.4 B11 — DeepClone fixture.
+public sealed class Tag
+{
+    public string Name { get; set; } = "";
+    public int Id { get; set; }
+}
+
+public sealed class DcSrc
+{
+    public int OrderId { get; set; }
+    public System.Collections.Generic.List<Tag>? Tags { get; set; }
+}
+
+public sealed class DcDst
+{
+    public int OrderId { get; set; }
+    public System.Collections.Generic.List<Tag>? Tags { get; set; }
+}
+
+[Map<DcSrc, DcDst>(DeepClone = true)]
+public static partial class DcMappings { }
+
 public static class Program
 {
     public static int Main()
@@ -176,6 +212,29 @@ public static class Program
         var orderArr = Mappings.Map(new[] { new OrderRequest(3, "c") });
         if (orderArr.Length != 1 || orderArr[0].Id != 3)
             throw new InvalidOperationException("[Map] TSrc[] overload returned unexpected payload");
+
+        // B3 — Projection. The Projection property holds an Expression<Func<TSrc,TDst>>
+        // intended for IQueryable.Select (typically over EF Core, which is not in the
+        // AOT smoke). Neither AsQueryable nor Expression.Compile() is AOT-safe
+        // (IL2026/IL3050), so we exercise the property as a value: assert it's a
+        // well-formed lambda whose body returns the destination type. This proves
+        // the generator's Projection emit path survived AOT publish.
+        var projExpr = ProjMappings.Projection;
+        if (projExpr is null || projExpr.Parameters.Count != 1 || projExpr.ReturnType != typeof(ProjDst))
+            throw new InvalidOperationException("[Projection] property shape unexpected");
+
+        // B6 — cycle-safe self-ref
+        var node = new NodeSrc { Name = "root" }; node.Self = node;
+        var nodeDst = NodeMappings.Map(node);
+        if (!ReferenceEquals(nodeDst, nodeDst.Self))
+            throw new InvalidOperationException("[CycleSafe] self-cycle did not resolve");
+
+        // B11 — deep-clone independence
+        var dcSrc = new DcSrc { OrderId = 1, Tags = new System.Collections.Generic.List<Tag> { new() { Name = "a", Id = 1 } } };
+        var dcDst = DcMappings.Map(dcSrc);
+        dcSrc.Tags.Add(new() { Name = "z", Id = 99 });
+        if (dcDst.Tags?.Count != 1)
+            throw new InvalidOperationException("[DeepClone] destination not independent");
     }
 
     private static void ExerciseAllocationGates()

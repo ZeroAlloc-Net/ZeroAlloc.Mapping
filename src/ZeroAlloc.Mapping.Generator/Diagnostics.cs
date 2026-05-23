@@ -133,4 +133,36 @@ internal static class Diagnostics
         category: Category,
         defaultSeverity: DiagnosticSeverity.Warning,
         isEnabledByDefault: true);
+
+    public static readonly DiagnosticDescriptor ZAMP017_ProjectionIncompatibleFeature = new(
+        id: "ZAMP017",
+        title: "[Map(Projection = true)] uses a feature EF Core cannot translate",
+        messageFormat: "[Map<{0}, {1}>(Projection = true)] uses {2}; EF Core's LINQ translator cannot handle this — remove the incompatible feature or remove Projection = true",
+        category: Category,
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
+    public static readonly DiagnosticDescriptor ZAMP018_CycleSafeMissingOnNested = new(
+        id: "ZAMP018",
+        title: "[Map(CycleSafe = true)] references a non-CycleSafe nested mapping",
+        messageFormat: "[Map<{0}, {1}>(CycleSafe = true)] references nested mapping '{2}' which is not declared CycleSafe = true — add CycleSafe = true on the nested mapping or remove it from the cycle-safe graph",
+        category: Category,
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
+    public static readonly DiagnosticDescriptor ZAMP019_DeepCloneUncloneableType = new(
+        id: "ZAMP019",
+        title: "[Map(DeepClone = true)] reaches an uncloneable type",
+        messageFormat: "[Map<{0}, {1}>(DeepClone = true)] reaches type '{2}' which has no public parameterless constructor or settable members — add an explicit nested [Map<,>] for '{2}' or change its shape",
+        category: Category,
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
+    public static readonly DiagnosticDescriptor ZAMP020_DeepCloneCyclicTypeGraph = new(
+        id: "ZAMP020",
+        title: "[Map(DeepClone = true)] walks a cyclic type graph without CycleSafe = true",
+        messageFormat: "[Map<{0}, {1}>(DeepClone = true)] walks a cyclic type graph (cycle through '{2}'); add CycleSafe = true to thread the runtime tracker, or break the cycle with an explicit nested [Map<,>]",
+        category: Category,
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
 }

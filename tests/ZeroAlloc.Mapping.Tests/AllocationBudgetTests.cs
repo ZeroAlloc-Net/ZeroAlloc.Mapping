@@ -2,6 +2,8 @@ using ZeroAlloc.TestHelpers;
 
 namespace ZeroAlloc.Mapping.Tests;
 
+using TestFixtures;
+
 public sealed record OrderRequest(int Id, string Notes);
 public sealed record Order(int Id, string Notes);
 
@@ -242,5 +244,33 @@ public class AllocationBudgetTests
         AllocationGate.AssertBudget(96, 1000,
             () => _ = BudgetMappings.Map((System.Collections.Generic.IEnumerable<OrderRequest>)src),
             "[Map] IEnumerable<T> overload (lazy, no enumeration)");
+    }
+
+    // ---- 3 v1.4-extension feature budgets ----
+
+    [Fact]
+    public void Map_CycleSafe_Allocates_Within_Budget()
+    {
+        // Cycle-safe Map allocates a Dictionary<object, object> per entry call.
+        // Budget: ~512B per call (Dictionary overhead + 1-2 entries for small graphs).
+        var src = new NodeSrc { Name = "x" };
+        src.Self = src;
+        AllocationGate.AssertBudget(512, 100, () => _ = NodeMappings.Map(src), "[CycleSafe] Map self-cycle");
+    }
+
+    [Fact]
+    public void Map_DeepClone_Collection_Allocates_Within_Budget()
+    {
+        // 50-element list deep-clone. Budget similar to v1.3 collection overload.
+        var src = new DcSrc { OrderId = 1, Tags = new System.Collections.Generic.List<Tag>() };
+        for (int i = 0; i < 50; i++) src.Tags.Add(new() { Name = "t", Id = i });
+        AllocationGate.AssertBudget(4096, 100, () => _ = DcMappings.Map(src), "[DeepClone] Map List(50)");
+    }
+
+    [Fact]
+    public void Projection_Static_Property_Is_ZeroAlloc_On_Access()
+    {
+        // The static property itself is allocated once at class init; accessing it should not allocate.
+        AllocationGate.AssertBudget(0, 1000, () => _ = ProjMappings.Projection, "Projection property access");
     }
 }
