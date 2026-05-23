@@ -136,6 +136,16 @@ internal static class MapperDiscovery
                     ? FindUpdateInPlacePartial(type, typeArgs[0], typeArgs[1])
                     : null;
 
+                var projection = kind == MappingKind.Map && attr.NamedArguments
+                    .FirstOrDefault(kv => string.Equals(kv.Key, "Projection", System.StringComparison.Ordinal))
+                    .Value.Value is true;
+                var cycleSafe = kind == MappingKind.Map && attr.NamedArguments
+                    .FirstOrDefault(kv => string.Equals(kv.Key, "CycleSafe", System.StringComparison.Ordinal))
+                    .Value.Value is true;
+                var deepClone = kind == MappingKind.Map && attr.NamedArguments
+                    .FirstOrDefault(kv => string.Equals(kv.Key, "DeepClone", System.StringComparison.Ordinal))
+                    .Value.Value is true;
+
                 decls.Add(new MappingDecl(
                     SourceTypeFqn: typeArgs[0].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
                     DestinationTypeFqn: typeArgs[1].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
@@ -143,6 +153,9 @@ internal static class MapperDiscovery
                     Location: type.Locations.FirstOrDefault() ?? Location.None,
                     UserPartialMethod: userPartial,
                     UpdateInPlacePartial: updateInPlace,
+                    Projection: projection,
+                    CycleSafe: cycleSafe,
+                    DeepClone: deepClone,
                     SourceTypeSymbol: typeArgs[0] as INamedTypeSymbol,
                     DestinationTypeSymbol: typeArgs[1] as INamedTypeSymbol));
             }
