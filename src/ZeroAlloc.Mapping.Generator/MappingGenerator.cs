@@ -99,6 +99,25 @@ public sealed class MappingGenerator : IIncrementalGenerator
             // would require a cross-class registry of MapperClass metadata,
             // which the IncrementalGenerator pipeline does not currently
             // expose. Deferred to a follow-up commit.
+            // ZAMP018 — [Map(CycleSafe = true)] requires every nested mapping reached
+            // from the property graph to also be CycleSafe = true (transitive enforcement).
+            // Cross-class lookup (the nested decl living in a different MapperClass) is
+            // deferred — same caveat as ZAMP017's transitive note above.
+            if (decl.CycleSafe)
+            {
+                foreach (var (nestedSrcFqn, nestedDstFqn) in WalkNestedMappingFqns(decl, cls, comp))
+                {
+                    if (!IsCycleSafe(nestedSrcFqn, nestedDstFqn, cls))
+                    {
+                        spc.ReportDiagnostic(Diagnostic.Create(
+                            Diagnostics.ZAMP018_CycleSafeMissingOnNested,
+                            decl.Location,
+                            decl.SourceTypeFqn, decl.DestinationTypeFqn,
+                            $"{nestedSrcFqn} -> {nestedDstFqn}"));
+                    }
+                }
+            }
+
             if (decl.Projection)
             {
                 if (!string.IsNullOrEmpty(cls.Culture))
@@ -460,4 +479,57 @@ public sealed class MappingGenerator : IIncrementalGenerator
 
     private static string StripGlobal(string fqn) =>
         fqn.StartsWith("global::", System.StringComparison.Ordinal) ? fqn.Substring(8) : fqn;
+
+    /// <summary>
+    /// Enumerates the (sourceFqn, destinationFqn) pairs of every nested mapping reached
+    /// from <paramref name="decl"/> via its declared property graph — used by ZAMP018
+    /// (CycleSafe transitivity) to verify each hop also opts in to the tracker.
+    /// </summary>
+    private static System.Collections.Generic.IEnumerable<(string SrcFqn, string DstFqn)>
+        WalkNestedMappingFqns(MappingDecl decl, MapperClass cls, Compilation comp)
+    {
+        var src = comp.GetTypeByMetadataName(StripGlobal(decl.SourceTypeFqn));
+        var dst = comp.GetTypeByMetadataName(StripGlobal(decl.DestinationTypeFqn));
+        if (src is null || dst is null) yield break;
+
+        var match = PropertyMatcher.Match(src, dst, decl.UserPartialMethod, cls.CaseInsensitive);
+        if (match is null) yield break;
+
+        foreach (var m in match.Mappings)
+        {
+            // Direct nested object mapping.
+            var nested = NestedMappingResolver.FindNestedMapper(cls, m.SourceType, m.TargetType);
+            if (nested is not null)
+            {
+                yield return (
+                    m.SourceType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
+                    m.TargetType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat));
+                continue;
+            }
+
+            // Collection of nested mappings.
+            var srcColl = NestedMappingResolver.AsCollection(m.SourceType);
+            var dstColl = NestedMappingResolver.AsCollection(m.TargetType);
+            if (srcColl is not null && dstColl is not null)
+            {
+                var nestedElem = NestedMappingResolver.FindNestedMapper(cls, srcColl.Value.Element, dstColl.Value.Element);
+                if (nestedElem is not null)
+                {
+                    yield return (
+                        srcColl.Value.Element.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
+                        dstColl.Value.Element.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat));
+                }
+            }
+        }
+    }
+
+    private static bool IsCycleSafe(string srcFqn, string dstFqn, MapperClass cls)
+    {
+        foreach (var d in cls.Mappings)
+        {
+            if (d.SourceTypeFqn == srcFqn && d.DestinationTypeFqn == dstFqn && d.CycleSafe)
+                return true;
+        }
+        return false;
+    }
 }

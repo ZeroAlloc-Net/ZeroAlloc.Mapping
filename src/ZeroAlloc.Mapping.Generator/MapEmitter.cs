@@ -30,6 +30,8 @@ internal static class MapEmitter
 
             if (decl.Kind == MappingKind.TryMap)
                 TryMapEmitter.EmitTryMapMethod(sb, decl, match, cls, comp, src, dst);
+            else if (decl.CycleSafe)
+                EmitCycleSafeMapPair(sb, decl, cls, comp, src, dst);
             else
                 EmitMapMethod(sb, decl, match, cls, comp, src, dst);
 
@@ -185,6 +187,120 @@ internal static class MapEmitter
         sb.Append("        for (int i = 0; i < src.Count; i++)\n");
         sb.Append("            __dst[i] = Map(src[i]);\n");
         sb.Append("        return __dst;\n    }\n");
+    }
+
+    /// <summary>
+    /// Emits the cycle-safe paired form for [Map(CycleSafe = true)]: a public
+    /// <c>Map(src)</c> entry that allocates a reference-identity tracker and forwards
+    /// to an internal <c>Map(src, tracker)</c> overload that caches built destinations
+    /// before walking children — breaking arbitrary object-graph cycles.
+    ///
+    /// CONSTRAINT: assumes the destination has a public parameterless constructor
+    /// and settable properties (mutable-builder shape). Records with positional
+    /// constructors / init-only properties are NOT supported because the emit
+    /// constructs <c>dst</c> empty, registers it in the tracker, then walks children
+    /// — the cycle could otherwise re-enter the source while we're still building it.
+    /// TODO: ZAMP021 to surface this constraint at compile time (deferred until a
+    /// real fixture surfaces the case).
+    /// </summary>
+    private static void EmitCycleSafeMapPair(StringBuilder sb, MappingDecl decl, MapperClass owningClass, Compilation comp, INamedTypeSymbol srcType, INamedTypeSymbol dstType)
+    {
+        var srcFqn = decl.SourceTypeFqn;
+        var dstFqn = decl.DestinationTypeFqn;
+
+        // Reuse the in-place matcher: it walks public settable properties on dst,
+        // which is exactly the surface the cycle-safe mutable-builder emit requires.
+        var match = MatchUpdateInPlace(srcType, dstType, decl.UserPartialMethod, owningClass.CaseInsensitive);
+
+        // Public entry: allocate tracker, forward to internal recursive overload.
+        sb.Append("    public static ").Append(dstFqn).Append(" Map(").Append(srcFqn).Append(" src)\n");
+        sb.Append("    {\n");
+        sb.Append("        global::System.ArgumentNullException.ThrowIfNull(src);\n");
+        sb.Append("        var __tracker = new global::System.Collections.Generic.Dictionary<object, object>(global::System.Collections.Generic.ReferenceEqualityComparer.Instance);\n");
+        sb.Append("        return Map(src, __tracker);\n");
+        sb.Append("    }\n");
+
+        // Internal recursive overload threading the tracker.
+        sb.Append("    internal static ").Append(dstFqn).Append(" Map(").Append(srcFqn).Append(" src, global::System.Collections.Generic.IDictionary<object, object> tracker)\n");
+        sb.Append("    {\n");
+        sb.Append("        if (tracker.TryGetValue(src, out var __cached)) return (").Append(dstFqn).Append(")__cached;\n");
+        sb.Append("        var __dst = new ").Append(dstFqn).Append("();\n");
+        sb.Append("        tracker.Add(src, __dst);\n");
+
+        if (match is not null)
+        {
+            foreach (var m in match.Mappings)
+            {
+                sb.Append("        __dst.").Append(m.TargetPropertyName).Append(" = ");
+                sb.Append(ResolveCycleSafeExpression(m, owningClass, comp));
+                sb.Append(";\n");
+            }
+            foreach (var c in match.Constants)
+            {
+                sb.Append("        __dst.").Append(c.TargetPropertyName).Append(" = ").Append(FormatLiteral(c.Value)).Append(";\n");
+            }
+        }
+
+        sb.Append("        return __dst;\n");
+        sb.Append("    }\n");
+    }
+
+    /// <summary>
+    /// Property-assignment resolver mirroring <see cref="ResolveExpression"/>, but
+    /// for cycle-safe emit: when the target is a nested mapping, thread <c>tracker</c>
+    /// through the recursive call. ZAMP018 guarantees the nested mapper is also
+    /// CycleSafe so the tracker overload exists.
+    /// </summary>
+    private static string ResolveCycleSafeExpression(InPlaceMapping m, MapperClass owningClass, Compilation comp)
+    {
+        if (m.IsFlattened)
+        {
+            var op = FlatteningOperator(new PropertyMapping(
+                TargetParamName: m.TargetPropertyName,
+                SourcePropertyName: m.SourcePropertyName,
+                SourceType: m.SourceType,
+                TargetType: m.TargetType,
+                IsFlattened: true));
+            return "src." + m.SourcePropertyName.Replace(".", op);
+        }
+
+        var srcExpr = "src." + m.SourcePropertyName;
+
+        // Collection of nested mappings — thread the tracker through each element.
+        // Null-guard the source collection (if nullable) AND each element, because
+        // mid-graph references in cycle-safe trees may be null and Map(null, tracker)
+        // would NRE on the tracker lookup.
+        var srcColl = NestedMappingResolver.AsCollection(m.SourceType);
+        var dstColl = NestedMappingResolver.AsCollection(m.TargetType);
+        if (srcColl is not null && dstColl is not null)
+        {
+            var nestedElem = NestedMappingResolver.FindNestedMapper(owningClass, srcColl.Value.Element, dstColl.Value.Element);
+            if (nestedElem is not null)
+            {
+                var loop = "(global::System.Linq.Enumerable.Select(" + srcExpr + ", x => x is null ? null! : Map(x, tracker)))";
+                var toCall = dstColl.Value.CollectionKind == "array"
+                    ? "global::System.Linq.Enumerable.ToArray" + loop
+                    : "global::System.Linq.Enumerable.ToList" + loop;
+                if (m.SourceType.NullableAnnotation == NullableAnnotation.Annotated)
+                    return srcExpr + " is null ? null! : " + toCall;
+                return toCall;
+            }
+        }
+
+        // Nested object via declared mapper — thread the tracker.
+        // The nullable source flows through because the recursive overload checks
+        // the tracker first; a null reference would never reach the assignment if
+        // PropertyMatcher honoured nullability — for cycle-safe trees the source
+        // may be null mid-graph, so guard explicitly here.
+        var nestedObj = NestedMappingResolver.FindNestedMapper(owningClass, m.SourceType, m.TargetType);
+        if (nestedObj is not null)
+        {
+            return srcExpr + " is null ? null! : Map(" + srcExpr + ", tracker)";
+        }
+
+        // Standard conversion (primitive / value-object / ctor-based).
+        var conv = ConversionResolver.Resolve(m.SourceType, m.TargetType, comp);
+        return ConversionResolver.Apply(conv, srcExpr, m.TargetType, owningClass.Culture);
     }
 
     private static void EmitMapMethod(StringBuilder sb, MappingDecl decl, MatchResult match, MapperClass owningClass, Compilation comp, ITypeSymbol srcType, ITypeSymbol dstType)
