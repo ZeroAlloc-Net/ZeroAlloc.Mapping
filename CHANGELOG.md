@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.0](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/compare/v1.4.1...v1.5.0) (2026-05-23)
+
+
+### Features
+
+* v1.4 — IQueryable projections, cycle-safe mapping, deep-clone (B3 + B6 + B11) ([#17](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/issues/17)) ([0240dcf](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/0240dcfc12b5f243f8e444d422ec3877f0e9ed1f))
+
 ## [1.4.1](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/compare/v1.4.0...v1.4.1) (2026-05-12)
 
 
