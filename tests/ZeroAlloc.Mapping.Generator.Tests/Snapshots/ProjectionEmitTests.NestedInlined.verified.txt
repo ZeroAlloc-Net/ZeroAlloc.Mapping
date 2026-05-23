@@ -15,15 +15,13 @@ partial class M
         return __dst;
     }
     /// <summary>LINQ expression-tree projection for use with IQueryable.Select.</summary>
-    public static global::System.Linq.Expressions.Expression<global::System.Func<global::MyApp.OrderSrc, global::MyApp.OrderDst>> Projection { get; } = __src => new global::MyApp.OrderDst
-    {
-        Id = __src.Id,
-        Customer = new global::MyApp.CustomerDst
-        {
-            Name = __src.Customer.Name,
-            Age = __src.Customer.Age
-        }
-    };
+    public static global::System.Linq.Expressions.Expression<global::System.Func<global::MyApp.OrderSrc, global::MyApp.OrderDst>> Projection { get; } = __src => new global::MyApp.OrderDst(
+        Id: __src.Id,
+        Customer: new global::MyApp.CustomerDst(
+            Name: __src.Customer.Name,
+            Age: __src.Customer.Age
+        )
+    );
 
     public static global::System.Collections.Generic.List<global::MyApp.OrderDst> Map(global::System.Collections.Generic.List<global::MyApp.OrderSrc> src)
     {

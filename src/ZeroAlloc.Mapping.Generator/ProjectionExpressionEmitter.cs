@@ -31,17 +31,21 @@ internal static class ProjectionExpressionEmitter
         sb.Append("    /// <summary>LINQ expression-tree projection for use with IQueryable.Select.</summary>\n");
         sb.Append("    public static global::System.Linq.Expressions.Expression<global::System.Func<")
           .Append(srcFqn).Append(", ").Append(dstFqn).Append(">> Projection { get; } = ")
-          .Append(RootParam).Append(" => new ").Append(dstFqn).Append("\n    {\n");
+          .Append(RootParam).Append(" => new ").Append(dstFqn).Append("(\n");
 
         EmitInitializerBody(sb, match, cls, comp, RootParam, indent: "        ");
 
-        sb.Append("    };\n\n");
+        sb.Append("    );\n\n");
     }
 
     /// <summary>
-    /// Emits the body of an object initializer: a comma-separated list of
-    /// <c>PropName = expr</c> lines. Used both at the top-level Projection
-    /// emission and recursively when inlining nested mappings.
+    /// Emits the body of a constructor invocation: a comma-separated list of
+    /// <c>paramName: expr</c> named arguments. Constructor invocation
+    /// (<c>Expression.New</c>) is used instead of object-initializer
+    /// (<c>Expression.MemberInit</c>) because positional records have no
+    /// parameterless constructor — initializer syntax would not compile.
+    /// EF Core's LINQ translator handles both forms equivalently for
+    /// projection.
     /// </summary>
     private static void EmitInitializerBody(
         StringBuilder sb,
@@ -56,7 +60,7 @@ internal static class ProjectionExpressionEmitter
 
         foreach (var m in match.Mappings)
         {
-            sb.Append(indent).Append(m.TargetParamName).Append(" = ");
+            sb.Append(indent).Append(m.TargetParamName).Append(": ");
             EmitExpressionFor(sb, m, cls, comp, srcAccess, indent);
             if (++idx < totalArgs) sb.Append(',');
             sb.Append('\n');
@@ -64,7 +68,7 @@ internal static class ProjectionExpressionEmitter
 
         foreach (var c in match.Constants)
         {
-            sb.Append(indent).Append(c.TargetParamName).Append(" = ").Append(FormatLiteral(c.Value));
+            sb.Append(indent).Append(c.TargetParamName).Append(": ").Append(FormatLiteral(c.Value));
             if (++idx < totalArgs) sb.Append(',');
             sb.Append('\n');
         }
@@ -127,10 +131,9 @@ internal static class ProjectionExpressionEmitter
                 var nestedMatch = PropertyMatcher.Match(nestedSrc, nestedDst, nestedObj.UserPartialMethod, cls.CaseInsensitive);
                 if (nestedMatch is not null)
                 {
-                    sb.Append("new ").Append(nestedObj.DestinationTypeFqn).Append('\n');
-                    sb.Append(indent).Append("{\n");
+                    sb.Append("new ").Append(nestedObj.DestinationTypeFqn).Append("(\n");
                     EmitInitializerBody(sb, nestedMatch, cls, comp, srcExpr, indent + "    ");
-                    sb.Append(indent).Append('}');
+                    sb.Append(indent).Append(')');
                     return;
                 }
             }
@@ -178,10 +181,9 @@ internal static class ProjectionExpressionEmitter
             var nestedMatch = PropertyMatcher.Match(nestedSrc, nestedDst, nested.UserPartialMethod, cls.CaseInsensitive);
             if (nestedMatch is not null)
             {
-                sb.Append("new ").Append(dstElemFqn).Append('\n');
-                sb.Append(indent).Append("{\n");
+                sb.Append("new ").Append(dstElemFqn).Append("(\n");
                 EmitInitializerBody(sb, nestedMatch, cls, comp, elemParam, indent + "    ");
-                sb.Append(indent).Append('}');
+                sb.Append(indent).Append(')');
                 sb.Append("))");
                 return;
             }
