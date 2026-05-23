@@ -33,6 +33,12 @@ internal static class MapEmitter
             else
                 EmitMapMethod(sb, decl, match, cls, comp, src, dst);
 
+            // LINQ expression-tree projection (only for [Map(Projection=true)]).
+            if (decl.Kind == MappingKind.Map && decl.Projection)
+            {
+                ProjectionExpressionEmitter.EmitProjection(sb, decl, match, cls, comp, src, dst);
+            }
+
             // Update-in-place void overload (only for [Map], gated on settable destination properties).
             if (decl.Kind == MappingKind.Map && decl.UpdateInPlacePartial is not null)
             {

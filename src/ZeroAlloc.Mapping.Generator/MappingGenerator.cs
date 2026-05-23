@@ -91,8 +91,14 @@ public sealed class MappingGenerator : IIncrementalGenerator
         {
             // ZAMP017 — [Map(Projection = true)] is incompatible with hooks,
             // culture, and polymorphic dispatch (EF Core's LINQ translator
-            // cannot model them). Direct case only — Task 4 will extend this
-            // to nested mappings inlined into the projection.
+            // cannot model them). Transitive note: when a nested [Map<,>] is
+            // declared in the SAME MapperClass, the outer decl already shares
+            // cls.Culture / cls.Hooks / cls.PolymorphicDecls and the direct
+            // check below catches it. Cross-class transitive checking (when
+            // the nested mapping lives in a *different* partial-class instance)
+            // would require a cross-class registry of MapperClass metadata,
+            // which the IncrementalGenerator pipeline does not currently
+            // expose. Deferred to a follow-up commit.
             if (decl.Projection)
             {
                 if (!string.IsNullOrEmpty(cls.Culture))
