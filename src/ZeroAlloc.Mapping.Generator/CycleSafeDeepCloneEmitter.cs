@@ -18,8 +18,7 @@ internal static class CycleSafeDeepCloneEmitter
     /// </summary>
     internal sealed record ReachableTypeInfo(
         INamedTypeSymbol Type,
-        bool HasParameterlessCtor,
-        bool IsCyclic);
+        bool HasParameterlessCtor);
 
     /// <summary>
     /// Walks the reachable type graph from every [Map(DeepClone=true, CycleSafe=true)]
@@ -126,8 +125,7 @@ internal static class CycleSafeDeepCloneEmitter
             // Add THIS type to collected (after walking children so cycle detection above already fired).
             collected[type] = new ReachableTypeInfo(
                 type,
-                HasParameterlessCtor: hasParameterlessCtor,
-                IsCyclic: false /* cycle case returned early; non-cyclic types reach here */);
+                HasParameterlessCtor: hasParameterlessCtor);
         }
         finally
         {

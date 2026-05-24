@@ -223,8 +223,8 @@ internal static class MapEmitter
     /// constructors / init-only properties are NOT supported because the emit
     /// constructs <c>dst</c> empty, registers it in the tracker, then walks children
     /// — the cycle could otherwise re-enter the source while we're still building it.
-    /// TODO: ZAMP021 to surface this constraint at compile time (deferred until a
-    /// real fixture surfaces the case).
+    /// <c>ZAMP021</c> enforces this constraint at compile time for the
+    /// <c>DeepClone + CycleSafe</c> graph walk (see <see cref="Diagnostics.ZAMP021_DeepCloneCycleSafePrimaryCtorCycle"/>).
     /// </summary>
     private static void EmitCycleSafeMapPair(
         StringBuilder sb,
