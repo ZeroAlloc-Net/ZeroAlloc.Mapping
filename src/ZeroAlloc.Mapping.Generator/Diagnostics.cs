@@ -165,4 +165,12 @@ internal static class Diagnostics
         category: Category,
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
+
+    public static readonly DiagnosticDescriptor ZAMP021_DeepCloneCycleSafePrimaryCtorCycle = new(
+        id: "ZAMP021",
+        title: "[Map(DeepClone = true, CycleSafe = true)] reaches a primary-ctor-only type in a cycle",
+        messageFormat: "[Map<{0}, {1}>(DeepClone = true, CycleSafe = true)] cycles through type '{2}' which has no public parameterless constructor — add a parameterless ctor on '{2}', declare an explicit nested [Map<,>] for it, or drop CycleSafe = true",
+        category: Category,
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
 }

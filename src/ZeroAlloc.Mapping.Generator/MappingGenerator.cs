@@ -18,7 +18,8 @@ public sealed class MappingGenerator : IIncrementalGenerator
             foreach (var c in classes)
             {
                 ReportPerClassDiagnostics(spc, c, comp);
-                var src = MapEmitter.Emit(c, comp);
+                var (src, mapEmitterDiagnostics) = MapEmitter.Emit(c, comp);
+                foreach (var d in mapEmitterDiagnostics) spc.ReportDiagnostic(d);
                 spc.AddSource($"{c.ClassName}.g.cs", src);
             }
         });

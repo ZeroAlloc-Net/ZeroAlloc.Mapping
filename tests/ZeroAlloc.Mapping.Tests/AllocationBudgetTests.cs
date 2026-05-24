@@ -90,6 +90,12 @@ public sealed record BudgetDogDto(string Name) : BudgetAnimalDto;
 [PolymorphicMap<BudgetAnimal, BudgetAnimalDto>]
 public static partial class BudgetPolymorphicFixtures { }
 
+// v1.5 — DeepClone + CycleSafe combined-path fixture.
+public sealed class AllocBudgetNode { public int Id { get; set; } public AllocBudgetNode? Next { get; set; } }
+
+[Map<AllocBudgetNode, AllocBudgetNode>(DeepClone = true, CycleSafe = true)]
+public static partial class AllocationBudgetMappers { }
+
 public class AllocationBudgetTests
 {
     // ---- 3 self-tests of the gate ----
@@ -272,5 +278,31 @@ public class AllocationBudgetTests
     {
         // The static property itself is allocated once at class init; accessing it should not allocate.
         AllocationGate.AssertBudget(0, 1000, () => _ = ProjMappings.Projection, "Projection property access");
+    }
+
+    // ---- v1.5 DeepClone+CycleSafe combined-path budget ----
+
+    [Fact]
+    public void DeepCloneCycleSafe_TenNodeGraph_AbsorbsBudget()
+    {
+        // Single tracker allocation + dictionary growth dominates. Expected ballpark:
+        //   - 1 Dictionary<object,object> alloc + initial bucket array (~512 B typical for cap 0).
+        //   - 1 alloc per node in the graph (10 here).
+        //   - 1 dictionary entry per node.
+        // A 4096 B budget at 1000 iterations gives ample headroom; tighten in a follow-up
+        // PR after baselining benchmark output.
+        var root = BuildTenNodeCyclicGraph();
+
+        AllocationGate.AssertBudget(4096, 1000,
+            () => _ = AllocationBudgetMappers.Map(root),
+            "CycleSafeMappers.Map (DeepClone+CycleSafe, 10-node cyclic graph)");
+    }
+
+    private static AllocBudgetNode BuildTenNodeCyclicGraph()
+    {
+        var nodes = new AllocBudgetNode[10];
+        for (int i = 0; i < 10; i++) nodes[i] = new AllocBudgetNode { Id = i };
+        for (int i = 0; i < 10; i++) nodes[i].Next = nodes[(i + 1) % 10];   // ring cycle.
+        return nodes[0];
     }
 }

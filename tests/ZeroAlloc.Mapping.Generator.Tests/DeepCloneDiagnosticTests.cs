@@ -42,4 +42,32 @@ public class DeepCloneDiagnosticTests
         var diags = TestHarness.RunDiagnostics(source);
         Assert.DoesNotContain(diags, d => d.Id == "ZAMP020");
     }
+
+    [Fact]
+    public void ZAMP021_FiresOnCyclicPrimaryCtorType()
+    {
+        var source = """
+            using ZeroAlloc.Mapping;
+            public sealed record Node(string Name, Node? Next);
+            [Map<Node, Node>(DeepClone = true, CycleSafe = true)]
+            public static partial class Mappers { }
+            """;
+        var diags = TestHarness.RunDiagnostics(source);
+        Assert.Contains(diags, d => d.Id == "ZAMP021");
+        Assert.Contains(diags, d => d.Id == "ZAMP021" && d.GetMessage().Contains("Node", System.StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void ZAMP021_DoesNotFireOnAcyclicPrimaryCtorType()
+    {
+        var source = """
+            using ZeroAlloc.Mapping;
+            public sealed record Leaf(string Name);
+            public sealed class Container { public Leaf? L { get; set; } }
+            [Map<Container, Container>(DeepClone = true, CycleSafe = true)]
+            public static partial class Mappers { }
+            """;
+        var diags = TestHarness.RunDiagnostics(source);
+        Assert.DoesNotContain(diags, d => d.Id == "ZAMP021");
+    }
 }

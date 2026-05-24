@@ -127,13 +127,52 @@ The tracker is one `Dictionary<object, object>` allocation per entry-call. For s
 
 If you have a hot path that maps a known-acyclic shape and you want to skip the tracker overhead, declare a separate non-cycle-safe `[Map<,>]` on a different host class.
 
+## Combining with `DeepClone`
+
+When `[Map(DeepClone = true, CycleSafe = true)]` is declared, the generator emits a unified clone walk that combines both flags' guarantees: **every reachable reference type is cloned**, and **every type in the graph participates in runtime cycle resolution**.
+
+Reachable reference types fall into two categories:
+
+- **Types with a public parameterless constructor** — the generator emits a private static `__CloneCycleSafe_<TypeName>` helper that allocates, registers the new instance in the tracker, then walks children. Cycles through these types are resolved at runtime.
+- **Primary-ctor-only types (records, immutables)** — the generator can't register a half-built instance in the tracker before evaluating ctor arguments. If such a type is reachable but NOT part of a cycle, it's cloned inline (`new T(arg1: ..., arg2: ...)`). If it IS part of a cycle, the generator emits **[ZAMP021](diagnostics.md#zamp021--deepclone--cyclesafe-reaches-a-primary-ctor-only-type-in-a-cycle)** at compile time.
+
+```csharp
+public sealed class Node
+{
+    public string Name { get; set; } = "";
+    public Node? Next { get; set; }
+}
+
+[Map<Node, Node>(DeepClone = true, CycleSafe = true)]
+public static partial class Mappers { }
+
+// Caller:
+var a = new Node { Name = "a" };
+var b = new Node { Name = "b" };
+a.Next = b; b.Next = a;          // A → B → A cycle.
+
+var cloned = Mappers.Map(a);
+// cloned.Next.Next is cloned (the tracker resolved the cycle).
+```
+
+`ZAMP021` example:
+
+```csharp
+public sealed record Box(string Label, Box? Inner);
+
+[Map<Box, Box>(DeepClone = true, CycleSafe = true)]
+public static partial class Mappers { }   // → ZAMP021: Box has no parameterless ctor and is cyclic.
+```
+
+Fix by adding a parameterless ctor (`public Box() : this("", null) { }`), declaring an explicit nested `[Map<Box, Box>]` (and accepting its constraints), or dropping `CycleSafe = true`.
+
 ## Diagnostics
 
 ### ZAMP018 (Error) — non-CycleSafe nested mapping
 
 Fires when a `CycleSafe = true` mapping references a nested `[Map<,>]` (declared on the same class) that isn't `CycleSafe = true`. See [ZAMP018](diagnostics.md#zamp018--mapcyclesafe--true-references-a-non-cyclesafe-nested-mapping).
 
-The companion diagnostic for deep-clone walks of cyclic type graphs is **[ZAMP020](diagnostics.md#zamp020--mapdeepclone--true-walks-a-cyclic-type-graph-without-cyclesafe--true)** — see [Deep Clone](deep-clone.md) for how cycle-safety composes with deep-clone emission.
+The companion diagnostic for deep-clone walks of cyclic type graphs is **[ZAMP020](diagnostics.md#zamp020--mapdeepclone--true-walks-a-cyclic-type-graph-without-cyclesafe--true)** — see [Deep Clone](deep-clone.md) for how cycle-safety composes with deep-clone emission. When both flags are set, **[ZAMP021](diagnostics.md#zamp021--deepclone--cyclesafe-reaches-a-primary-ctor-only-type-in-a-cycle)** fires if the combined walk reaches a primary-ctor-only type that participates in a cycle.
 
 ## Where to Next
 

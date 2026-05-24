@@ -135,9 +135,7 @@ The fix is to compose `DeepClone = true` with `CycleSafe = true`:
 public static partial class M { }
 ```
 
-**What actually happens today.** When both `DeepClone = true` and `CycleSafe = true` are set on the same `[Map<,>]`, the **CycleSafe** emit path wins on the routing fork. The cycle-safe pair (entry method + recursive tracker-accepting overload) is used; reachable reference-typed properties WITHOUT an explicit nested `[Map<,>]` declaration are NOT deep-cloned — they fall through to the standard conversion path (alias, not literal clone). To deep-clone such properties, the user must declare an explicit nested `[Map<,>]` for each one. CycleSafe's transitive ZAMP018 enforcement will catch any missing nested declarations.
-
-Full integration of deep-clone literal walks WITH tracker threading is deferred to a future release. See `docs/backlog.md` item `B12 — DeepClone + CycleSafe integration`.
+See [Cycle-Safe Mapping → Combining with `DeepClone`](cycle-safe-mapping.md#combining-with-deepclone) for the full semantic of the combined-flags path. In summary: every reachable reference type participates in cycle resolution via emitted `__CloneCycleSafe_T` helpers (for parameterless-ctor types) or inline `new T(arg1: ..., arg2: ...)` literals (for acyclic primary-ctor-only types). A primary-ctor-only type that appears in a cycle fires **[ZAMP021](diagnostics.md#zamp021--deepclone--cyclesafe-reaches-a-primary-ctor-only-type-in-a-cycle)**.
 
 Note this still requires settable properties on every cloned type — see [Cycle-Safe Mapping](cycle-safe-mapping.md#why-settable-properties-are-required).
 
