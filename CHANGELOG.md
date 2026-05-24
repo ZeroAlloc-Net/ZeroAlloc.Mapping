@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.0](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/compare/v1.5.0...v1.6.0) (2026-05-24)
+
+
+### Features
+
+* **mapping:** v1.5 — DeepClone + CycleSafe full integration (B12) ([#19](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/issues/19)) ([8397193](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/83971931385cfec8065ad11549d939345bb5d4e7))
+
 ## [1.5.0](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/compare/v1.4.1...v1.5.0) (2026-05-23)
 
 
