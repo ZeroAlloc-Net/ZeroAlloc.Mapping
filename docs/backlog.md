@@ -37,6 +37,6 @@ For v1 scope, see [`plans/2026-05-07-mapping-design.md`](plans/2026-05-07-mappin
 
 ## B12 — `DeepClone + CycleSafe` integration — ✅ shipped (v1.5)
 
-**Shipped:** 2026-05-23 via PR #?? (Mapping v1.5). The combined path now emits per-type `__CloneCycleSafe_T` helpers for parameterless-ctor reachable types and inline `new T(arg1: ..., arg2: ...)` for acyclic primary-ctor-only types. `ZAMP021` fires on cycles through primary-ctor-only types.
+**Shipped:** 2026-05-23 via PR #19 (Mapping v1.5). The combined path now emits per-type `__CloneCycleSafe_T` helpers for parameterless-ctor reachable types and inline `new T(arg1: ..., arg2: ...)` for acyclic primary-ctor-only types. `ZAMP021` fires on cycles through primary-ctor-only types.
 
 Solo `CycleSafe` and solo `DeepClone` paths are unchanged. See [`cycle-safe-mapping.md`](cycle-safe-mapping.md) for the combined-flags semantic and [`diagnostics.md`](diagnostics.md) for `ZAMP021`.
