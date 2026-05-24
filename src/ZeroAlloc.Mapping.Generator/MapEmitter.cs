@@ -42,12 +42,17 @@ internal static class MapEmitter
             if (decl.Kind == MappingKind.TryMap)
                 TryMapEmitter.EmitTryMapMethod(sb, decl, match, cls, comp, src, dst);
             else if (decl.CycleSafe)
+            {
                 // CycleSafe routes through the tracker-threaded pair. When combined with
                 // DeepClone, the per-property emit is still the in-place builder shape
                 // (ResolveCycleSafeExpression) — the tracker resolves cycles at runtime so
                 // ZAMP020 does not fire. Pure DeepClone (without CycleSafe) goes through
                 // DeepCloneEmitter to emit literal per-property clones.
-                EmitCycleSafeMapPair(sb, decl, cls, comp, src, dst);
+                // B12: pass reachable only for combined DeepClone+CycleSafe so the new
+                // fallback branch is gated; solo CycleSafe gets null and is byte-identical.
+                var reachableForDecl = (decl.DeepClone) ? reachable : null;
+                EmitCycleSafeMapPair(sb, decl, cls, comp, src, dst, reachableForDecl);
+            }
             else if (decl.DeepClone)
                 DeepCloneEmitter.EmitDeepCloneMethod(sb, decl, cls, comp, src, dst);
             else
@@ -221,7 +226,14 @@ internal static class MapEmitter
     /// TODO: ZAMP021 to surface this constraint at compile time (deferred until a
     /// real fixture surfaces the case).
     /// </summary>
-    private static void EmitCycleSafeMapPair(StringBuilder sb, MappingDecl decl, MapperClass owningClass, Compilation comp, INamedTypeSymbol srcType, INamedTypeSymbol dstType)
+    private static void EmitCycleSafeMapPair(
+        StringBuilder sb,
+        MappingDecl decl,
+        MapperClass owningClass,
+        Compilation comp,
+        INamedTypeSymbol srcType,
+        INamedTypeSymbol dstType,
+        Dictionary<INamedTypeSymbol, CycleSafeDeepCloneEmitter.ReachableTypeInfo>? reachable)
     {
         var srcFqn = decl.SourceTypeFqn;
         var dstFqn = decl.DestinationTypeFqn;
@@ -250,7 +262,7 @@ internal static class MapEmitter
             foreach (var m in match.Mappings)
             {
                 sb.Append("        __dst.").Append(m.TargetPropertyName).Append(" = ");
-                sb.Append(ResolveCycleSafeExpression(m, owningClass, comp));
+                sb.Append(ResolveCycleSafeExpression(m, owningClass, comp, reachable));
                 sb.Append(";\n");
             }
             foreach (var c in match.Constants)
@@ -269,7 +281,12 @@ internal static class MapEmitter
     /// through the recursive call. ZAMP018 guarantees the nested mapper is also
     /// CycleSafe so the tracker overload exists.
     /// </summary>
-    private static string ResolveCycleSafeExpression(InPlaceMapping m, MapperClass owningClass, Compilation comp)
+#pragma warning disable MA0051
+    private static string ResolveCycleSafeExpression(
+        InPlaceMapping m,
+        MapperClass owningClass,
+        Compilation comp,
+        Dictionary<INamedTypeSymbol, CycleSafeDeepCloneEmitter.ReachableTypeInfo>? reachable)
     {
         if (m.IsFlattened)
         {
@@ -316,10 +333,51 @@ internal static class MapEmitter
             return srcExpr + " is null ? null! : Map(" + srcExpr + ", tracker)";
         }
 
+        // B12: DeepClone+CycleSafe — route to clone helper or inline primary-ctor construction.
+        // Only activates when reachable is not null (originating decl had both flags). Solo
+        // CycleSafe is byte-identical because reachable stays null.
+        if (reachable is not null && m.TargetType is INamedTypeSymbol propNt && !propNt.IsValueType
+            && propNt.SpecialType != SpecialType.System_String)
+        {
+            // Collection of clone-only elements?
+            var srcCollB12 = NestedMappingResolver.AsCollection(m.SourceType);
+            var dstCollB12 = NestedMappingResolver.AsCollection(m.TargetType);
+            if (srcCollB12 is not null && dstCollB12 is not null
+                && dstCollB12.Value.Element is INamedTypeSymbol elemNt
+                && reachable.TryGetValue(elemNt, out var elemInfo))
+            {
+                var elemExpr = elemInfo.HasParameterlessCtor
+                    ? "x is null ? null! : __CloneCycleSafe_" + MangleForRef(elemNt) + "(x, tracker)"
+                    : "x is null ? null! : "
+                      + CycleSafeDeepCloneEmitter.EmitInlinePrimaryCtorClone(elemNt, "x", owningClass, comp, reachable);
+
+                var loop = "(global::System.Linq.Enumerable.Select(" + srcExpr + ", x => " + elemExpr + "))";
+                var toCall = dstCollB12.Value.CollectionKind == "array"
+                    ? "global::System.Linq.Enumerable.ToArray" + loop
+                    : "global::System.Linq.Enumerable.ToList" + loop;
+                if (m.SourceType.NullableAnnotation == NullableAnnotation.Annotated)
+                    return srcExpr + " is null ? null! : " + toCall;
+                return toCall;
+            }
+
+            if (reachable.TryGetValue(propNt, out var info))
+            {
+                return info.HasParameterlessCtor
+                    ? srcExpr + " is null ? null! : __CloneCycleSafe_" + MangleForRef(propNt) + "(" + srcExpr + ", tracker)"
+                    : srcExpr + " is null ? null! : "
+                      + CycleSafeDeepCloneEmitter.EmitInlinePrimaryCtorClone(propNt, srcExpr, owningClass, comp, reachable);
+            }
+        }
+
         // Standard conversion (primitive / value-object / ctor-based).
         var conv = ConversionResolver.Resolve(m.SourceType, m.TargetType, comp);
         return ConversionResolver.Apply(conv, srcExpr, m.TargetType, owningClass.Culture);
     }
+#pragma warning restore MA0051
+
+    // Small helper local to MapEmitter — delegates to the mangle in CycleSafeDeepCloneEmitter.
+    private static string MangleForRef(INamedTypeSymbol t) =>
+        CycleSafeDeepCloneEmitter.MangleTypeNameForCall(t);
 
     private static void EmitMapMethod(StringBuilder sb, MappingDecl decl, MatchResult match, MapperClass owningClass, Compilation comp, ITypeSymbol srcType, ITypeSymbol dstType)
     {

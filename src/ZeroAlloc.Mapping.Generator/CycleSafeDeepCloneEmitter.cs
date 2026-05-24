@@ -164,7 +164,7 @@ internal static class CycleSafeDeepCloneEmitter
     {
         var type = info.Type;
         var fqn = type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-        var mangled = MangleTypeName(type);
+        var mangled = MangleTypeNameForCall(type);
 
         sb.Append("    private static ").Append(fqn).Append(" __CloneCycleSafe_").Append(mangled)
           .Append("(").Append(fqn).Append(" src, global::System.Collections.Generic.IDictionary<object, object> tracker)\n");
@@ -239,12 +239,12 @@ internal static class CycleSafeDeepCloneEmitter
             }
             else if (collected.TryGetValue(elemNt, out var elemInfo) && elemInfo.HasParameterlessCtor)
             {
-                elemExpr = "x is null ? null! : __CloneCycleSafe_" + MangleTypeName(elemNt) + "(x, tracker)";
+                elemExpr = "x is null ? null! : __CloneCycleSafe_" + MangleTypeNameForCall(elemNt) + "(x, tracker)";
             }
             else
             {
                 // Primary-ctor-only elem; inline construction.
-                elemExpr = "x is null ? null! : " + InlinePrimaryCtorClone(elemNt, "x", cls, comp, collected);
+                elemExpr = "x is null ? null! : " + EmitInlinePrimaryCtorClone(elemNt, "x", cls, comp, collected);
             }
 
             var loop = "(global::System.Linq.Enumerable.Select(" + srcExpr + ", x => " + elemExpr + "))";
@@ -269,14 +269,14 @@ internal static class CycleSafeDeepCloneEmitter
             if (collected.TryGetValue(propNt, out var info) && info.HasParameterlessCtor)
             {
                 sb.Append(srcExpr).Append(" is null ? null! : __CloneCycleSafe_")
-                  .Append(MangleTypeName(propNt))
+                  .Append(MangleTypeNameForCall(propNt))
                   .Append("(").Append(srcExpr).Append(", tracker)");
                 return;
             }
 
             // Primary-ctor-only reachable type → inline construction.
             sb.Append(srcExpr).Append(" is null ? null! : ")
-              .Append(InlinePrimaryCtorClone(propNt, srcExpr, cls, comp, collected));
+              .Append(EmitInlinePrimaryCtorClone(propNt, srcExpr, cls, comp, collected));
             return;
         }
 
@@ -290,7 +290,7 @@ internal static class CycleSafeDeepCloneEmitter
     /// Does NOT register with the tracker (atomic construction); ZAMP021 should already have fired
     /// if this type is part of a cycle.
     /// </summary>
-    private static string InlinePrimaryCtorClone(
+    internal static string EmitInlinePrimaryCtorClone(
         INamedTypeSymbol type,
         string srcExpr,
         MapperClass cls,
@@ -334,7 +334,7 @@ internal static class CycleSafeDeepCloneEmitter
     /// with underscores so generic / nested types produce a single C# identifier.
     /// Example: <c>Ns.Outer+Inner&lt;T&gt;</c> → <c>Ns_Outer_Inner_T_</c>.
     /// </summary>
-    private static string MangleTypeName(INamedTypeSymbol type)
+    internal static string MangleTypeNameForCall(INamedTypeSymbol type)
     {
         var s = type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
         if (s.StartsWith("global::", System.StringComparison.Ordinal)) s = s.Substring(8);
