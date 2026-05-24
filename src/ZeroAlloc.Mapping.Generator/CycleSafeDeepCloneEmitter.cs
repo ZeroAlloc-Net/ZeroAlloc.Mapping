@@ -106,17 +106,19 @@ internal static class CycleSafeDeepCloneEmitter
                     if (coll.Value.Element is INamedTypeSymbol elemNt)
                     {
                         if (elemNt.IsValueType || elemNt.SpecialType == SpecialType.System_String) continue;
-                        // Skip if explicit nested [Map<elem, elem>] exists.
-                        if (NestedMappingResolver.FindNestedMapper(cls, elemNt, elemNt) is not null) continue;
+                        // Skip if an OTHER explicit nested [Map<elem, elem>] exists (not the originating decl itself).
+                        var elemNested = NestedMappingResolver.FindNestedMapper(cls, elemNt, elemNt);
+                        if (elemNested is not null && !ReferenceEquals(elemNested, originatingDecl)) continue;
                         WalkType(elemNt, cls, comp, collected, visiting, originatingDecl, diagnosticSink);
                     }
                     continue;
                 }
 
-                // Skip if explicit nested [Map<propType, propType>] exists in the MapperClass.
+                // Skip if an OTHER explicit nested [Map<propType, propType>] exists (not the originating decl itself).
                 if (propType is INamedTypeSymbol propNt)
                 {
-                    if (NestedMappingResolver.FindNestedMapper(cls, propNt, propNt) is not null) continue;
+                    var propNested = NestedMappingResolver.FindNestedMapper(cls, propNt, propNt);
+                    if (propNested is not null && !ReferenceEquals(propNested, originatingDecl)) continue;
                     WalkType(propNt, cls, comp, collected, visiting, originatingDecl, diagnosticSink);
                 }
             }
