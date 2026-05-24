@@ -35,10 +35,8 @@ For v1 scope, see [`plans/2026-05-07-mapping-design.md`](plans/2026-05-07-mappin
 
 ---
 
-## B12 — `DeepClone + CycleSafe` integration
+## B12 — `DeepClone + CycleSafe` integration — ✅ shipped (v1.5)
 
-**What.** When both `DeepClone = true` and `CycleSafe = true` are set on a `[Map<,>]`, emit the deep-clone literal walk with the runtime tracker threaded through every nested clone call. Currently the CycleSafe routing fork wins and DeepClone literal walks don't activate.
+**Shipped:** 2026-05-23 via PR #?? (Mapping v1.5). The combined path now emits per-type `__CloneCycleSafe_T` helpers for parameterless-ctor reachable types and inline `new T(arg1: ..., arg2: ...)` for acyclic primary-ctor-only types. `ZAMP021` fires on cycles through primary-ctor-only types.
 
-**Why deferred.** Combining the two emitters cleanly requires either (a) merging the walks into a single emit pipeline, or (b) calling DeepCloneEmitter with a tracker parameter that mutates the property-assignment emit. Both are non-trivial and weren't needed by the v1.4 graduation cases. Users who need deep-clone of a cyclic graph today can declare explicit nested `[Map<,>]` for each type — CycleSafe's ZAMP018 enforces full coverage.
-
-**Graduation signal.** A real consumer hits the case where DeepClone+CycleSafe should literal-walk and finds the explicit-nested workaround too noisy.
+Solo `CycleSafe` and solo `DeepClone` paths are unchanged. See [`cycle-safe-mapping.md`](cycle-safe-mapping.md) for the combined-flags semantic and [`diagnostics.md`](diagnostics.md) for `ZAMP021`.
