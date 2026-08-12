@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.1](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/compare/v1.6.0...v1.6.1) (2026-08-12)
+
+
+### Bug Fixes
+
+* turn warnings into errors, fixing the three findings that were real ([#35](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/issues/35)) ([987538d](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/987538d7a4a37bc09113836b92f69075032a1f3d))
+
 ## [1.6.0](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/compare/v1.5.0...v1.6.0) (2026-05-24)
 
 
