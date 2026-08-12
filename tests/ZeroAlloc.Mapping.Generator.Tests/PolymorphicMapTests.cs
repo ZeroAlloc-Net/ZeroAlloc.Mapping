@@ -4,6 +4,9 @@ namespace ZeroAlloc.Mapping.Generator.Tests;
 
 public class PolymorphicMapTests
 {
+    // MA0009: a pattern run over generated source must not be able to hang the suite.
+    private static readonly System.TimeSpan RegexTimeout = System.TimeSpan.FromSeconds(5);
+
     [Fact]
     public Task PolymorphicMap_Emits_Switch_Dispatcher()
     {
@@ -92,11 +95,17 @@ public class PolymorphicMapTests
         var output = TestHarness.RunGenerator(source);
         // Exactly ONE Map(Cat) → CatDto signature should appear (from the per-decl path).
         var count = System.Text.RegularExpressions.Regex.Matches(
-            output, "public static global::CatDto Map\\(global::Cat src\\)").Count;
+            output,
+            "public static global::CatDto Map\\(global::Cat src\\)",
+            System.Text.RegularExpressions.RegexOptions.None,
+            RegexTimeout).Count;
         Assert.Equal(1, count);
         // The dispatcher's collection overloads also must not duplicate the per-decl ones.
         var listCount = System.Text.RegularExpressions.Regex.Matches(
-            output, "Map\\(global::System\\.Collections\\.Generic\\.List<global::Cat> src\\)").Count;
+            output,
+            "Map\\(global::System\\.Collections\\.Generic\\.List<global::Cat> src\\)",
+            System.Text.RegularExpressions.RegexOptions.None,
+            RegexTimeout).Count;
         Assert.Equal(1, listCount);
     }
 

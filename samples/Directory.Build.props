@@ -1,0 +1,11 @@
+<Project>
+  <Import Project="$([MSBuild]::GetPathOfFileAbove($(MSBuildThisFile), $(MSBuildThisFileDirectory)..))" />
+  <PropertyGroup>
+    <!-- MA0016 asks for a collection abstraction instead of List<T>. That is the wrong advice
+         in this folder: benchmarks compare concrete collection types on purpose, and the
+         concrete type IS the scenario. baseline returns List<FlatDst> so the hand-written and generated paths are
+         measured on identical shapes; widening it would change what is compared.
+         Scoped to this folder so production code still gets the rule. -->
+    <NoWarn>$(NoWarn);MA0016</NoWarn>
+  </PropertyGroup>
+</Project>

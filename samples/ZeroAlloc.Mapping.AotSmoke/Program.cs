@@ -148,7 +148,16 @@ public static class Program
         }
     }
 
+    // Split from one 88-line ExerciseBehavior (MA0051). The sections were already delimited
+    // by comments; each now stands alone and the smoke run calls all three in order.
     private static void ExerciseBehavior()
+    {
+        ExerciseCoreMapping();
+        ExerciseFeatureScenarios();
+        ExerciseProjectionAndCloning();
+    }
+
+    private static void ExerciseCoreMapping()
     {
         // [Map] happy path
         var order = Mappings.Map(new OrderRequest(42, "hello"));
@@ -180,7 +189,10 @@ public static class Program
         var flat = FlattenFixtures.Map(new Outer(new Inner(42)));
         if (flat.Value != 42)
             throw new InvalidOperationException("[MapProperty] flatten returned unexpected payload");
+    }
 
+    private static void ExerciseFeatureScenarios()
+    {
         // B5 update-in-place
         var existing = new MutableOrder { Id = 0, Notes = "stale" };
         UpdateInPlaceFixtures.Map(new MutableOrderRequest(42, "fresh"), existing);
@@ -212,7 +224,10 @@ public static class Program
         var orderArr = Mappings.Map(new[] { new OrderRequest(3, "c") });
         if (orderArr.Length != 1 || orderArr[0].Id != 3)
             throw new InvalidOperationException("[Map] TSrc[] overload returned unexpected payload");
+    }
 
+    private static void ExerciseProjectionAndCloning()
+    {
         // B3 — Projection. The Projection property holds an Expression<Func<TSrc,TDst>>
         // intended for IQueryable.Select (typically over EF Core, which is not in the
         // AOT smoke). Neither AsQueryable nor Expression.Compile() is AOT-safe

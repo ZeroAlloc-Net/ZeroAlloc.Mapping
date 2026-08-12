@@ -1,0 +1,12 @@
+<Project>
+  <Import Project="$([MSBuild]::GetPathOfFileAbove($(MSBuildThisFile), $(MSBuildThisFileDirectory)..))" />
+  <PropertyGroup>
+    <!-- MA0016 asks for a collection abstraction instead of List<T>. That is the wrong advice
+         in this folder: these are the source and destination DTOs a mapper maps, and the
+         concrete type IS the scenario. [Map<DcSrc, DcDst>(DeepClone = true)] over a
+         List<Tag> is what exercises list deep-cloning; widening it to IList<Tag> makes the
+         generator emit different code and the test stops covering what it was written for.
+         Scoped to this folder so production code still gets the rule. -->
+    <NoWarn>$(NoWarn);MA0016</NoWarn>
+  </PropertyGroup>
+</Project>
