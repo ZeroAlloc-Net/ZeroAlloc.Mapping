@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.2](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/compare/v1.6.1...v1.6.2) (2026-09-19)
+
+
+### Bug Fixes
+
+* **ci:** stamp the assembly version when publishing from a manifest ([#97](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/issues/97)) ([77a1284](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/77a1284137857c41340abc7c20fadd278fbfd3c5))
+
 ## [1.6.1](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/compare/v1.6.0...v1.6.1) (2026-08-12)
 
 
