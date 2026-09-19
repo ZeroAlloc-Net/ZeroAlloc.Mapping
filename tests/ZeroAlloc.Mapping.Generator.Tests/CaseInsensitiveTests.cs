@@ -1,11 +1,12 @@
-using VerifyXunit;
+
+using ZeroAlloc.TestHelpers;
 
 namespace ZeroAlloc.Mapping.Generator.Tests;
 
 public class CaseInsensitiveTests
 {
     [Fact]
-    public Task CaseInsensitive_Matches_DifferentCasing()
+    public void CaseInsensitive_Matches_DifferentCasing()
     {
         var source = """
             using ZeroAlloc.Mapping;
@@ -15,7 +16,7 @@ public class CaseInsensitiveTests
             [CaseInsensitiveMapping]
             public static partial class M { }
             """;
-        return Verifier.Verify(TestHarness.RunGenerator(source)).UseDirectory("Snapshots");
+        GeneratorSnapshot.VerifyText(TestHarness.RunGenerator(source));
     }
 
     [Fact]

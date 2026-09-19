@@ -1,11 +1,12 @@
-using VerifyXunit;
+
+using ZeroAlloc.TestHelpers;
 
 namespace ZeroAlloc.Mapping.Generator.Tests;
 
 public class FlatteningTests
 {
     [Fact]
-    public Task Flatten_TwoLevels_Emits_NullForgivingPath_Under_Map()
+    public void Flatten_TwoLevels_Emits_NullForgivingPath_Under_Map()
     {
         var source = """
             using ZeroAlloc.Mapping;
@@ -20,11 +21,11 @@ public class FlatteningTests
                 public static partial Dst Map(Src src);
             }
             """;
-        return Verifier.Verify(TestHarness.RunGenerator(source)).UseDirectory("Snapshots");
+        GeneratorSnapshot.VerifyText(TestHarness.RunGenerator(source));
     }
 
     [Fact]
-    public Task Flatten_NullableSource_EmitsNullConditional()
+    public void Flatten_NullableSource_EmitsNullConditional()
     {
         var source = """
             #nullable enable
@@ -40,7 +41,7 @@ public class FlatteningTests
                 public static partial Dst? Map(Src? src);
             }
             """;
-        return Verifier.Verify(TestHarness.RunGenerator(source)).UseDirectory("Snapshots");
+        GeneratorSnapshot.VerifyText(TestHarness.RunGenerator(source));
     }
 
     [Fact]

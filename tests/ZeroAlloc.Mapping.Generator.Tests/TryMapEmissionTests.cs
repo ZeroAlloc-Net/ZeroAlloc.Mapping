@@ -1,11 +1,12 @@
-using VerifyXunit;
+
+using ZeroAlloc.TestHelpers;
 
 namespace ZeroAlloc.Mapping.Generator.Tests;
 
 public class TryMapEmissionTests
 {
     [Fact]
-    public Task TryMap_Flat_Emits_ResultReturning_Method()
+    public void TryMap_Flat_Emits_ResultReturning_Method()
     {
         var source = """
             using ZeroAlloc.Mapping;
@@ -14,11 +15,11 @@ public class TryMapEmissionTests
             [TryMap<Src, Dst>]
             public static partial class M { }
             """;
-        return Verifier.Verify(TestHarness.RunGenerator(source)).UseDirectory("Snapshots");
+        GeneratorSnapshot.VerifyText(TestHarness.RunGenerator(source));
     }
 
     [Fact]
-    public Task TryMap_With_SingleArgCtor_Wraps_In_TryCatch()
+    public void TryMap_With_SingleArgCtor_Wraps_In_TryCatch()
     {
         var source = """
             using ZeroAlloc.Mapping;
@@ -36,6 +37,6 @@ public class TryMapEmissionTests
             [TryMap<Src, Dst>]
             public static partial class M { }
             """;
-        return Verifier.Verify(TestHarness.RunGenerator(source)).UseDirectory("Snapshots");
+        GeneratorSnapshot.VerifyText(TestHarness.RunGenerator(source));
     }
 }

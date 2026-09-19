@@ -1,11 +1,12 @@
-using VerifyXunit;
+
+using ZeroAlloc.TestHelpers;
 
 namespace ZeroAlloc.Mapping.Generator.Tests;
 
 public class ReverseMapTests
 {
     [Fact]
-    public Task ReverseMap_Emits_Both_Directions()
+    public void ReverseMap_Emits_Both_Directions()
     {
         var source = """
             using ZeroAlloc.Mapping;
@@ -14,7 +15,7 @@ public class ReverseMapTests
             [ReverseMap<Order, OrderDto>]
             public static partial class M { }
             """;
-        return Verifier.Verify(TestHarness.RunGenerator(source)).UseDirectory("Snapshots");
+        GeneratorSnapshot.VerifyText(TestHarness.RunGenerator(source));
     }
 
     [Fact]

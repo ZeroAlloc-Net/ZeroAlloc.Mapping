@@ -1,11 +1,12 @@
-using VerifyXunit;
+
+using ZeroAlloc.TestHelpers;
 
 namespace ZeroAlloc.Mapping.Generator.Tests;
 
 public class CycleSafeEmitTests
 {
     [Fact]
-    public Task SelfRef()
+    public void SelfRef()
     {
         var source = """
             using ZeroAlloc.Mapping;
@@ -15,11 +16,11 @@ public class CycleSafeEmitTests
             [Map<Node, NodeDst>(CycleSafe = true)]
             public static partial class M { }
             """;
-        return Verifier.Verify(TestHarness.RunGenerator(source)).UseDirectory("Snapshots");
+        GeneratorSnapshot.VerifyText(TestHarness.RunGenerator(source));
     }
 
     [Fact]
-    public Task MutualRef()
+    public void MutualRef()
     {
         var source = """
             using ZeroAlloc.Mapping;
@@ -32,11 +33,11 @@ public class CycleSafeEmitTests
             [Map<CustomerSrc, CustomerDst>(CycleSafe = true)]
             public static partial class M { }
             """;
-        return Verifier.Verify(TestHarness.RunGenerator(source)).UseDirectory("Snapshots");
+        GeneratorSnapshot.VerifyText(TestHarness.RunGenerator(source));
     }
 
     [Fact]
-    public Task CollectionOfNested()
+    public void CollectionOfNested()
     {
         var source = """
             using ZeroAlloc.Mapping;
@@ -49,6 +50,6 @@ public class CycleSafeEmitTests
             [Map<ItemSrc, ItemDst>(CycleSafe = true)]
             public static partial class M { }
             """;
-        return Verifier.Verify(TestHarness.RunGenerator(source)).UseDirectory("Snapshots");
+        GeneratorSnapshot.VerifyText(TestHarness.RunGenerator(source));
     }
 }

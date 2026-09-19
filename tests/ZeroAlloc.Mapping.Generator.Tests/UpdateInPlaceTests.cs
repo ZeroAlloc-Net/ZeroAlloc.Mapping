@@ -1,11 +1,12 @@
-using VerifyXunit;
+
+using ZeroAlloc.TestHelpers;
 
 namespace ZeroAlloc.Mapping.Generator.Tests;
 
 public class UpdateInPlaceTests
 {
     [Fact]
-    public Task UpdateInPlace_Settable_Properties_Emits_Assignments()
+    public void UpdateInPlace_Settable_Properties_Emits_Assignments()
     {
         var source = """
             using ZeroAlloc.Mapping;
@@ -21,11 +22,11 @@ public class UpdateInPlaceTests
                 public static partial void Map(OrderRequest src, Order existingDst);
             }
             """;
-        return Verifier.Verify(TestHarness.RunGenerator(source)).UseDirectory("Snapshots");
+        GeneratorSnapshot.VerifyText(TestHarness.RunGenerator(source));
     }
 
     [Fact]
-    public Task UpdateInPlace_Honours_BeforeAfter_Hooks()
+    public void UpdateInPlace_Honours_BeforeAfter_Hooks()
     {
         var source = """
             using ZeroAlloc.Mapping;
@@ -39,11 +40,11 @@ public class UpdateInPlaceTests
                 [AfterMap] public static void Audit(Src src, Dst dst) { }
             }
             """;
-        return Verifier.Verify(TestHarness.RunGenerator(source)).UseDirectory("Snapshots");
+        GeneratorSnapshot.VerifyText(TestHarness.RunGenerator(source));
     }
 
     [Fact]
-    public Task UpdateInPlace_Coexists_With_Constructor_Form()
+    public void UpdateInPlace_Coexists_With_Constructor_Form()
     {
         var source = """
             using ZeroAlloc.Mapping;
@@ -56,11 +57,11 @@ public class UpdateInPlaceTests
                 public static partial void Map(Src src, Dst existingDst);
             }
             """;
-        return Verifier.Verify(TestHarness.RunGenerator(source)).UseDirectory("Snapshots");
+        GeneratorSnapshot.VerifyText(TestHarness.RunGenerator(source));
     }
 
     [Fact]
-    public Task UpdateInPlace_With_DottedFlattening_Emits_NullForgivingPath()
+    public void UpdateInPlace_With_DottedFlattening_Emits_NullForgivingPath()
     {
         var source = """
             using ZeroAlloc.Mapping;
@@ -75,7 +76,7 @@ public class UpdateInPlaceTests
                 public static partial void Map(Src src, Dst existingDst);
             }
             """;
-        return Verifier.Verify(TestHarness.RunGenerator(source)).UseDirectory("Snapshots");
+        GeneratorSnapshot.VerifyText(TestHarness.RunGenerator(source));
     }
 
     [Fact]

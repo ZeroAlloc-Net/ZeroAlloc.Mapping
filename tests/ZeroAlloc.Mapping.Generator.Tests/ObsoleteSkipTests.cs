@@ -1,11 +1,12 @@
-using VerifyXunit;
+
+using ZeroAlloc.TestHelpers;
 
 namespace ZeroAlloc.Mapping.Generator.Tests;
 
 public class ObsoleteSkipTests
 {
     [Fact]
-    public Task Obsolete_SourceProperty_IsSilentlyIgnored()
+    public void Obsolete_SourceProperty_IsSilentlyIgnored()
     {
         var source = """
             using System;
@@ -15,11 +16,11 @@ public class ObsoleteSkipTests
             [Map<Src, Dst>]
             public static partial class M { }
             """;
-        return Verifier.Verify(TestHarness.RunGenerator(source)).UseDirectory("Snapshots");
+        GeneratorSnapshot.VerifyText(TestHarness.RunGenerator(source));
     }
 
     [Fact]
-    public Task Obsolete_DestinationParam_TreatedAs_IgnoreTarget()
+    public void Obsolete_DestinationParam_TreatedAs_IgnoreTarget()
     {
         var source = """
             using System;
@@ -29,11 +30,11 @@ public class ObsoleteSkipTests
             [Map<Src, Dst>]
             public static partial class M { }
             """;
-        return Verifier.Verify(TestHarness.RunGenerator(source)).UseDirectory("Snapshots");
+        GeneratorSnapshot.VerifyText(TestHarness.RunGenerator(source));
     }
 
     [Fact]
-    public Task Obsolete_Source_With_Explicit_MapPropertyRename_IsHonored()
+    public void Obsolete_Source_With_Explicit_MapPropertyRename_IsHonored()
     {
         var source = """
             using System;
@@ -47,7 +48,7 @@ public class ObsoleteSkipTests
                 public static partial Dst Map(Src src);
             }
             """;
-        return Verifier.Verify(TestHarness.RunGenerator(source)).UseDirectory("Snapshots");
+        GeneratorSnapshot.VerifyText(TestHarness.RunGenerator(source));
     }
 
     [Fact]

@@ -1,11 +1,12 @@
-using VerifyXunit;
+
+using ZeroAlloc.TestHelpers;
 
 namespace ZeroAlloc.Mapping.Generator.Tests;
 
 public class ConversionTests
 {
     [Fact]
-    public Task Conversion_StringToInt_Uses_Parse_Invariant()
+    public void Conversion_StringToInt_Uses_Parse_Invariant()
     {
         var source = """
             using ZeroAlloc.Mapping;
@@ -14,11 +15,11 @@ public class ConversionTests
             [Map<Src, Dst>]
             public static partial class M { }
             """;
-        return Verifier.Verify(TestHarness.RunGenerator(source)).UseDirectory("Snapshots");
+        GeneratorSnapshot.VerifyText(TestHarness.RunGenerator(source));
     }
 
     [Fact]
-    public Task Conversion_IntToValueObject_Uses_SingleArgCtor()
+    public void Conversion_IntToValueObject_Uses_SingleArgCtor()
     {
         var source = """
             using ZeroAlloc.Mapping;
@@ -28,11 +29,11 @@ public class ConversionTests
             [Map<Src, Dst>]
             public static partial class M { }
             """;
-        return Verifier.Verify(TestHarness.RunGenerator(source)).UseDirectory("Snapshots");
+        GeneratorSnapshot.VerifyText(TestHarness.RunGenerator(source));
     }
 
     [Fact]
-    public Task Conversion_StringToEnum_Uses_EnumParse()
+    public void Conversion_StringToEnum_Uses_EnumParse()
     {
         var source = """
             using ZeroAlloc.Mapping;
@@ -42,11 +43,11 @@ public class ConversionTests
             [Map<Src, Dst>]
             public static partial class M { }
             """;
-        return Verifier.Verify(TestHarness.RunGenerator(source)).UseDirectory("Snapshots");
+        GeneratorSnapshot.VerifyText(TestHarness.RunGenerator(source));
     }
 
     [Fact]
-    public Task Conversion_IntToLong_Uses_ImplicitCast()
+    public void Conversion_IntToLong_Uses_ImplicitCast()
     {
         var source = """
             using ZeroAlloc.Mapping;
@@ -55,6 +56,6 @@ public class ConversionTests
             [Map<Src, Dst>]
             public static partial class M { }
             """;
-        return Verifier.Verify(TestHarness.RunGenerator(source)).UseDirectory("Snapshots");
+        GeneratorSnapshot.VerifyText(TestHarness.RunGenerator(source));
     }
 }

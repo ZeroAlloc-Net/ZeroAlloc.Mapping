@@ -1,11 +1,12 @@
-using VerifyXunit;
+
+using ZeroAlloc.TestHelpers;
 
 namespace ZeroAlloc.Mapping.Generator.Tests;
 
 public class DiscoveryTests
 {
     [Fact]
-    public Task EmitsStub_For_Map_Decorated_Class()
+    public void EmitsStub_For_Map_Decorated_Class()
     {
         var source = """
             using ZeroAlloc.Mapping;
@@ -14,7 +15,7 @@ public class DiscoveryTests
             [Map<A, B>]
             public static partial class M { }
             """;
-        return Verifier.Verify(TestHarness.RunGenerator(source)).UseDirectory("Snapshots");
+        GeneratorSnapshot.VerifyText(TestHarness.RunGenerator(source));
     }
 
     [Fact]
