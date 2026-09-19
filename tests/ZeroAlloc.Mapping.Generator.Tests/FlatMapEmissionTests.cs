@@ -1,11 +1,12 @@
-using VerifyXunit;
+
+using ZeroAlloc.TestHelpers;
 
 namespace ZeroAlloc.Mapping.Generator.Tests;
 
 public class FlatMapEmissionTests
 {
     [Fact]
-    public Task FlatMap_TwoIdenticalProperties_Emits_DirectAssignment()
+    public void FlatMap_TwoIdenticalProperties_Emits_DirectAssignment()
     {
         var source = """
             using ZeroAlloc.Mapping;
@@ -14,11 +15,11 @@ public class FlatMapEmissionTests
             [Map<OrderRequest, Order>]
             public static partial class AppMappings { }
             """;
-        return Verifier.Verify(TestHarness.RunGenerator(source)).UseDirectory("Snapshots");
+        GeneratorSnapshot.VerifyText(TestHarness.RunGenerator(source));
     }
 
     [Fact]
-    public Task FlatMap_With_MapPropertyRename()
+    public void FlatMap_With_MapPropertyRename()
     {
         var source = """
             using ZeroAlloc.Mapping;
@@ -31,11 +32,11 @@ public class FlatMapEmissionTests
                 public static partial Dst Map(Src src);
             }
             """;
-        return Verifier.Verify(TestHarness.RunGenerator(source)).UseDirectory("Snapshots");
+        GeneratorSnapshot.VerifyText(TestHarness.RunGenerator(source));
     }
 
     [Fact]
-    public Task FlatMap_With_MapValueConstant()
+    public void FlatMap_With_MapValueConstant()
     {
         var source = """
             using ZeroAlloc.Mapping;
@@ -48,11 +49,11 @@ public class FlatMapEmissionTests
                 public static partial Dst Map(Src src);
             }
             """;
-        return Verifier.Verify(TestHarness.RunGenerator(source)).UseDirectory("Snapshots");
+        GeneratorSnapshot.VerifyText(TestHarness.RunGenerator(source));
     }
 
     [Fact]
-    public Task FlatMap_With_MapperIgnoreTarget()
+    public void FlatMap_With_MapperIgnoreTarget()
     {
         var source = """
             using ZeroAlloc.Mapping;
@@ -67,6 +68,6 @@ public class FlatMapEmissionTests
             [Map<Src, Dst>]
             public static partial class M { }
             """;
-        return Verifier.Verify(TestHarness.RunGenerator(source)).UseDirectory("Snapshots");
+        GeneratorSnapshot.VerifyText(TestHarness.RunGenerator(source));
     }
 }

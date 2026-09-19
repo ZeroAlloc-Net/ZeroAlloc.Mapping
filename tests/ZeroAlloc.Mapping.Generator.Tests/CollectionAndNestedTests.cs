@@ -1,11 +1,12 @@
-using VerifyXunit;
+
+using ZeroAlloc.TestHelpers;
 
 namespace ZeroAlloc.Mapping.Generator.Tests;
 
 public class CollectionAndNestedTests
 {
     [Fact]
-    public Task Collection_ListOfRecords_Emits_PerElementMap()
+    public void Collection_ListOfRecords_Emits_PerElementMap()
     {
         var source = """
             using ZeroAlloc.Mapping;
@@ -18,11 +19,11 @@ public class CollectionAndNestedTests
             [Map<OrderItemRequest, OrderItem>]
             public static partial class M { }
             """;
-        return Verifier.Verify(TestHarness.RunGenerator(source)).UseDirectory("Snapshots");
+        GeneratorSnapshot.VerifyText(TestHarness.RunGenerator(source));
     }
 
     [Fact]
-    public Task Nested_Object_Chains_To_DeclaredMapper()
+    public void Nested_Object_Chains_To_DeclaredMapper()
     {
         var source = """
             using ZeroAlloc.Mapping;
@@ -34,6 +35,6 @@ public class CollectionAndNestedTests
             [Map<CustomerRequest, Customer>]
             public static partial class M { }
             """;
-        return Verifier.Verify(TestHarness.RunGenerator(source)).UseDirectory("Snapshots");
+        GeneratorSnapshot.VerifyText(TestHarness.RunGenerator(source));
     }
 }

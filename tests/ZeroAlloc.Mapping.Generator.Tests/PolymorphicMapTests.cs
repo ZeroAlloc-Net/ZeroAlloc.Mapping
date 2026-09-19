@@ -1,4 +1,5 @@
-using VerifyXunit;
+
+using ZeroAlloc.TestHelpers;
 
 namespace ZeroAlloc.Mapping.Generator.Tests;
 
@@ -8,7 +9,7 @@ public class PolymorphicMapTests
     private static readonly System.TimeSpan RegexTimeout = System.TimeSpan.FromSeconds(5);
 
     [Fact]
-    public Task PolymorphicMap_Emits_Switch_Dispatcher()
+    public void PolymorphicMap_Emits_Switch_Dispatcher()
     {
         var source = """
             using ZeroAlloc.Mapping;
@@ -23,11 +24,11 @@ public class PolymorphicMapTests
             [PolymorphicMap<Animal, AnimalDto>]
             public static partial class M { }
             """;
-        return Verifier.Verify(TestHarness.RunGenerator(source)).UseDirectory("Snapshots");
+        GeneratorSnapshot.VerifyText(TestHarness.RunGenerator(source));
     }
 
     [Fact]
-    public Task PolymorphicTryMap_Emits_Result_Returning_Dispatcher()
+    public void PolymorphicTryMap_Emits_Result_Returning_Dispatcher()
     {
         var source = """
             using ZeroAlloc.Mapping;
@@ -42,11 +43,11 @@ public class PolymorphicMapTests
             [PolymorphicTryMap<Animal, AnimalDto>]
             public static partial class M { }
             """;
-        return Verifier.Verify(TestHarness.RunGenerator(source)).UseDirectory("Snapshots");
+        GeneratorSnapshot.VerifyText(TestHarness.RunGenerator(source));
     }
 
     [Fact]
-    public Task PolymorphicMap_With_Single_Derived_Case_Still_Emits()
+    public void PolymorphicMap_With_Single_Derived_Case_Still_Emits()
     {
         var source = """
             using ZeroAlloc.Mapping;
@@ -58,7 +59,7 @@ public class PolymorphicMapTests
             [PolymorphicMap<Animal, AnimalDto>]
             public static partial class M { }
             """;
-        return Verifier.Verify(TestHarness.RunGenerator(source)).UseDirectory("Snapshots");
+        GeneratorSnapshot.VerifyText(TestHarness.RunGenerator(source));
     }
 
     [Fact]

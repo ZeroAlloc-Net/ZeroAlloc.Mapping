@@ -1,11 +1,12 @@
-using VerifyXunit;
+
+using ZeroAlloc.TestHelpers;
 
 namespace ZeroAlloc.Mapping.Generator.Tests;
 
 public class DeepCloneEmitTests
 {
     [Fact]
-    public Task DeepClone_Flat()
+    public void DeepClone_Flat()
     {
         var source = """
             using ZeroAlloc.Mapping;
@@ -16,6 +17,6 @@ public class DeepCloneEmitTests
             [Map<Src, Dst>(DeepClone = true)]
             public static partial class M { }
             """;
-        return Verifier.Verify(TestHarness.RunGenerator(source)).UseDirectory("Snapshots");
+        GeneratorSnapshot.VerifyText(TestHarness.RunGenerator(source));
     }
 }

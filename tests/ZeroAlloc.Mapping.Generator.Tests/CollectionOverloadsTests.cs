@@ -1,11 +1,12 @@
-using VerifyXunit;
+
+using ZeroAlloc.TestHelpers;
 
 namespace ZeroAlloc.Mapping.Generator.Tests;
 
 public class CollectionOverloadsTests
 {
     [Fact]
-    public Task Map_AutoEmits_List_Overload()
+    public void Map_AutoEmits_List_Overload()
     {
         var source = """
             using ZeroAlloc.Mapping;
@@ -14,7 +15,7 @@ public class CollectionOverloadsTests
             [Map<Src, Dst>]
             public static partial class M { }
             """;
-        return Verifier.Verify(TestHarness.RunGenerator(source)).UseDirectory("Snapshots");
+        GeneratorSnapshot.VerifyText(TestHarness.RunGenerator(source));
     }
 
     [Fact]
@@ -36,7 +37,7 @@ public class CollectionOverloadsTests
     }
 
     [Fact]
-    public Task PolymorphicMap_Gets_CollectionOverloads_Too()
+    public void PolymorphicMap_Gets_CollectionOverloads_Too()
     {
         var source = """
             using ZeroAlloc.Mapping;
@@ -48,11 +49,11 @@ public class CollectionOverloadsTests
             [PolymorphicMap<Animal, AnimalDto>]
             public static partial class M { }
             """;
-        return Verifier.Verify(TestHarness.RunGenerator(source)).UseDirectory("Snapshots");
+        GeneratorSnapshot.VerifyText(TestHarness.RunGenerator(source));
     }
 
     [Fact]
-    public Task TryMap_AutoEmits_List_Overload_With_Per_Element_Failures()
+    public void TryMap_AutoEmits_List_Overload_With_Per_Element_Failures()
     {
         var source = """
             using ZeroAlloc.Mapping;
@@ -61,7 +62,7 @@ public class CollectionOverloadsTests
             [TryMap<Src, Dst>]
             public static partial class M { }
             """;
-        return Verifier.Verify(TestHarness.RunGenerator(source)).UseDirectory("Snapshots");
+        GeneratorSnapshot.VerifyText(TestHarness.RunGenerator(source));
     }
 
     [Fact]

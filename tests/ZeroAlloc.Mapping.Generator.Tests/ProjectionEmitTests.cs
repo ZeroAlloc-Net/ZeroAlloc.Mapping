@@ -1,11 +1,12 @@
-using VerifyXunit;
+
+using ZeroAlloc.TestHelpers;
 
 namespace ZeroAlloc.Mapping.Generator.Tests;
 
 public class ProjectionEmitTests
 {
     [Fact]
-    public Task Flat()
+    public void Flat()
     {
         var source = """
             using ZeroAlloc.Mapping;
@@ -15,11 +16,11 @@ public class ProjectionEmitTests
             [Map<Src, Dst>(Projection = true)]
             public static partial class M { }
             """;
-        return Verifier.Verify(TestHarness.RunGenerator(source)).UseDirectory("Snapshots");
+        GeneratorSnapshot.VerifyText(TestHarness.RunGenerator(source));
     }
 
     [Fact]
-    public Task NestedInlined()
+    public void NestedInlined()
     {
         var source = """
             using ZeroAlloc.Mapping;
@@ -32,6 +33,6 @@ public class ProjectionEmitTests
             [Map<CustomerSrc, CustomerDst>]
             public static partial class M { }
             """;
-        return Verifier.Verify(TestHarness.RunGenerator(source)).UseDirectory("Snapshots");
+        GeneratorSnapshot.VerifyText(TestHarness.RunGenerator(source));
     }
 }
