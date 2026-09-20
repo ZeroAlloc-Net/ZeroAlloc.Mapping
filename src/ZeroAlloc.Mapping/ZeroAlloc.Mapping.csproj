@@ -9,7 +9,7 @@
     <WarningsAsErrors>$(WarningsAsErrors);IL2026;IL2067;IL2075;IL2091;IL3050;IL3051</WarningsAsErrors>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="ZeroAlloc.Results" Version="1.1.*" />
+    <PackageReference Include="ZeroAlloc.Results" Version="1.2.*" />
     <ProjectReference Include="..\ZeroAlloc.Mapping.Generator\ZeroAlloc.Mapping.Generator.csproj"
                       OutputItemType="Analyzer"
                       ReferenceOutputAssembly="false"
