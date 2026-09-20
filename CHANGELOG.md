@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.5](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/compare/v1.6.4...v1.6.5) (2026-09-20)
+
+
+### Bug Fixes
+
+* pack every src package instead of a hardcoded list ([#108](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/issues/108)) ([561f106](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/561f106763a1501b379bbbefb87b2bb3fb644ff2))
+
 ## [1.6.4](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/compare/v1.6.3...v1.6.4) (2026-09-20)
 
 
