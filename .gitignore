@@ -20,3 +20,6 @@ BenchmarkDotNet.Artifacts/
 benchmarks/**/generated/
 
 !src/ZeroAlloc.Mediator.Cache/
+
+# Native AOT publish output from the AotSmoke sample.
+aot-out/
