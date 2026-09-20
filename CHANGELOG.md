@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.3](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/compare/v1.6.2...v1.6.3) (2026-09-20)
+
+
+### Bug Fixes
+
+* declare current sibling package versions ([#103](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/issues/103)) ([4b00f1c](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/4b00f1c0f3a8420c1ddf5b0f1af7f7e50b2524f4))
+
 ## [1.6.2](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/compare/v1.6.1...v1.6.2) (2026-09-19)
 
 
