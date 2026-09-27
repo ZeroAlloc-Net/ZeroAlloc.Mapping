@@ -6,10 +6,10 @@ name: Publish from manifest
 # missed a sub-package (e.g. the hardcoded pack list in release-please.yml is
 # stale and a new sub-package is missing). --skip-duplicate makes re-runs safe.
 #
-# Walks ZeroAlloc.Mediator.slnx for every src/* csproj — no hardcoded list,
+# Walks every src/*/*.csproj — no hardcoded list,
 # survives sub-package additions automatically.
 #
-# Usage:  gh workflow run publish-from-manifest.yml --repo ZeroAlloc-Net/ZeroAlloc.Mediator
+# Usage:  gh workflow run publish-from-manifest.yml --repo ZeroAlloc-Net/ZeroAlloc.Mapping
 
 on:
   workflow_dispatch:
@@ -41,17 +41,17 @@ jobs:
           echo "Manifest version: $version"
 
       - name: Restore
-        run: dotnet restore ZeroAlloc.Mediator.slnx
+        run: dotnet restore ZeroAlloc.Mapping.slnx
 
       - name: Build
         # -p:Version must be passed HERE, not only to pack. The pack step below runs
         # --no-build and overrides PackageVersion alone, so a build without this leaves
         # the assembly stamped with a fallback version while the package claims the real
         # one. See ZeroAlloc-Net/.github#26.
-        run: dotnet build ZeroAlloc.Mediator.slnx --configuration Release --no-restore -p:Version=${{ steps.version.outputs.version }}
+        run: dotnet build ZeroAlloc.Mapping.slnx --configuration Release --no-restore -p:Version=${{ steps.version.outputs.version }}
 
       - name: Test
-        run: dotnet test ZeroAlloc.Mediator.slnx --configuration Release --no-build
+        run: dotnet test ZeroAlloc.Mapping.slnx --configuration Release --no-build
 
       - name: Pack every src/* csproj
         env:
