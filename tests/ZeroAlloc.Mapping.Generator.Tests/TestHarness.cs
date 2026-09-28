@@ -37,6 +37,8 @@ internal static class TestHarness
         return driver.GetRunResult().Results.SelectMany(r => r.Diagnostics).ToList();
     }
 
+    internal static IEnumerable<MetadataReference> References() => ReferenceAssemblies();
+
     private static IEnumerable<MetadataReference> ReferenceAssemblies()
     {
         var explicitTypes = new[]

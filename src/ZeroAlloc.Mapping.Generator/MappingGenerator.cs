@@ -50,6 +50,12 @@ public sealed class MappingGenerator : IIncrementalGenerator
             });
             if (!hasAny) continue;
 
+            // A mapper compiled into a referenced assembly keeps its attributes in metadata but has
+            // no syntax, so it would read as not partial. It is that assembly's mapper, not a host
+            // this compilation declares.
+            var declaration = type.Locations.FirstOrDefault(static l => l.IsInSource);
+            if (declaration is null) continue;
+
             var isStaticPartial = type.IsStatic && type.DeclaringSyntaxReferences.Any(r =>
                 r.GetSyntax() is Microsoft.CodeAnalysis.CSharp.Syntax.ClassDeclarationSyntax c &&
                 c.Modifiers.Any(m => m.IsKind(Microsoft.CodeAnalysis.CSharp.SyntaxKind.PartialKeyword)));
@@ -58,7 +64,7 @@ public sealed class MappingGenerator : IIncrementalGenerator
             {
                 spc.ReportDiagnostic(Diagnostic.Create(
                     Diagnostics.ZAMP006_NotStaticPartialClass,
-                    type.Locations.FirstOrDefault() ?? Location.None,
+                    declaration,
                     type.ToDisplayString()));
             }
         }
@@ -69,20 +75,25 @@ public sealed class MappingGenerator : IIncrementalGenerator
         // ZAMP016 — duplicate [MappingCulture] across partial parts.
         if (cls.Culture is not null && cls.TypeSymbol is not null)
         {
+            // Discovery keeps the first [MappingCulture]; the diagnostic points at the second, the
+            // one that is ignored.
+            AttributeData? duplicate = null;
             var cultureCount = 0;
             foreach (var a in cls.TypeSymbol.GetAttributes())
             {
                 if (a.AttributeClass is { Name: "MappingCultureAttribute" } ac &&
-                    ac.ContainingNamespace is { Name: "Mapping", ContainingNamespace.Name: "ZeroAlloc" })
+                    ac.ContainingNamespace is { Name: "Mapping", ContainingNamespace.Name: "ZeroAlloc" } &&
+                    ++cultureCount == 2)
                 {
-                    cultureCount++;
+                    duplicate = a;
+                    break;
                 }
             }
-            if (cultureCount > 1)
+            if (duplicate is not null)
             {
                 spc.ReportDiagnostic(Diagnostic.Create(
                     Diagnostics.ZAMP016_DuplicateMappingCulture,
-                    cls.TypeSymbol.Locations.FirstOrDefault() ?? Location.None,
+                    MapperDiscovery.AttributeLocation(duplicate, cls.TypeSymbol.Locations[0]),
                     cls.TypeSymbol.ToDisplayString(),
                     cls.Culture));
             }
@@ -206,7 +217,7 @@ public sealed class MappingGenerator : IIncrementalGenerator
                     {
                         spc.ReportDiagnostic(Diagnostic.Create(
                             Diagnostics.ZAMP009_ReverseMapNotSymmetric,
-                            decl.Location,
+                            MapperDiscovery.AttributeLocation(attr, decl.Location),
                             src.ToDisplayString(),
                             dst.ToDisplayString(),
                             "[" + name!.Replace("Attribute", "") + "]"));
@@ -331,7 +342,7 @@ public sealed class MappingGenerator : IIncrementalGenerator
                                     {
                                         spc.ReportDiagnostic(Diagnostic.Create(
                                             Diagnostics.ZAMP005_MapPropertyTargetMissing,
-                                            decl.Location, segment, cursor.ToDisplayString()));
+                                            MapperDiscovery.AttributeLocation(attr, decl.Location), segment, cursor.ToDisplayString()));
                                         break;
                                     }
                                     cursor = found.Type as INamedTypeSymbol;
@@ -341,14 +352,14 @@ public sealed class MappingGenerator : IIncrementalGenerator
                             {
                                 spc.ReportDiagnostic(Diagnostic.Create(
                                     Diagnostics.ZAMP005_MapPropertyTargetMissing,
-                                    decl.Location, srcName, src.ToDisplayString()));
+                                    MapperDiscovery.AttributeLocation(attr, decl.Location), srcName, src.ToDisplayString()));
                             }
                         }
                         if (dstName is not null && !ctorParams.Contains(dstName))
                         {
                             spc.ReportDiagnostic(Diagnostic.Create(
                                 Diagnostics.ZAMP005_MapPropertyTargetMissing,
-                                decl.Location, dstName, dst.ToDisplayString()));
+                                MapperDiscovery.AttributeLocation(attr, decl.Location), dstName, dst.ToDisplayString()));
                         }
                     }
                 }
@@ -359,7 +370,7 @@ public sealed class MappingGenerator : IIncrementalGenerator
             {
                 var renames = decl.UserPartialMethod.GetAttributes()
                     .Where(a => a.AttributeClass?.Name == "MapPropertyAttribute" && a.ConstructorArguments.Length == 2)
-                    .Select(a => (Source: a.ConstructorArguments[0].Value as string, Target: a.ConstructorArguments[1].Value as string))
+                    .Select(a => (Attribute: a, Source: a.ConstructorArguments[0].Value as string, Target: a.ConstructorArguments[1].Value as string))
                     .Where(p => p.Source is not null && p.Target is not null)
                     .ToList();
                 var ctorParamNames = new System.Collections.Generic.HashSet<string>(
@@ -373,7 +384,7 @@ public sealed class MappingGenerator : IIncrementalGenerator
                     {
                         spc.ReportDiagnostic(Diagnostic.Create(
                             Diagnostics.ZAMP003_AmbiguousSource,
-                            decl.Location, target));
+                            MapperDiscovery.AttributeLocation(rename.Attribute, decl.Location), target));
                     }
                 }
             }
