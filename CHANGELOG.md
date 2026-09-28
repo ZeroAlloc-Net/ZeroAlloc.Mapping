@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.6.6](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/compare/v1.6.5...v1.6.6) (2026-09-28)
+
+
+### Bug Fixes
+
+* mark released analyzer rules and public api as shipped and automate the move ([#124](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/issues/124)) ([4509c63](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/4509c631acb228fcfa1acbf881ff14f5c56709a9))
+* point mapping diagnostics at the attribute they are about ([#128](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/issues/128)) ([cca0a03](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/cca0a0393a15d8c5d04010db6db4a33fc8407b12))
+
+
+### Tests
+
+* cover value types in the AOT smoke ([#126](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/issues/126)) ([cfd2973](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/cfd29731018170fbfa6a875e7361905bb441ce16))
+
 ## [1.6.5](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/compare/v1.6.4...v1.6.5) (2026-09-20)
 
 
