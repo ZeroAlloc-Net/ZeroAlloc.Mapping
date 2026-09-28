@@ -127,6 +127,19 @@ public sealed class DcDst
 [Map<DcSrc, DcDst>(DeepClone = true)]
 public static partial class DcMappings { }
 
+// Value-type fixture — string -> enum via Enum.Parse<TEnum>, nullable value-type members,
+// and a record-struct destination through both [Map] and [TryMap].
+public enum Priority { Low, High }
+public sealed record TicketSrc(int Id, string Priority, int? Estimate, int Points);
+[System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Auto)]
+public readonly record struct TicketDst(int Id, Priority Priority, int? Estimate, long? Points);
+
+[Map<TicketSrc, TicketDst>]
+public static partial class TicketMappings { }
+
+[TryMap<TicketSrc, TicketDst>]
+public static partial class TicketTryMappings { }
+
 public static class Program
 {
     public static int Main()
@@ -155,6 +168,7 @@ public static class Program
         ExerciseCoreMapping();
         ExerciseFeatureScenarios();
         ExerciseProjectionAndCloning();
+        ExerciseValueTypes();
     }
 
     private static void ExerciseCoreMapping()
@@ -250,6 +264,58 @@ public static class Program
         dcSrc.Tags.Add(new() { Name = "z", Id = 99 });
         if (dcDst.Tags?.Count != 1)
             throw new InvalidOperationException("[DeepClone] destination not independent");
+    }
+
+    private static void ExerciseValueTypes()
+    {
+        // string -> enum via Enum.Parse<Priority>, nullable member with a value, int -> long?.
+        var t = TicketMappings.Map(new TicketSrc(7, "High", 5, 3));
+        if (t.Id != 7 || t.Priority != Priority.High || t.Estimate != 5 || t.Points != 3L)
+            throw new InvalidOperationException(
+                $"[Map] record-struct value types: got {t.Id}/{t.Priority}/{t.Estimate}/{t.Points}");
+        Console.WriteLine("  value types: string->enum, int?->int?, int->long? into record struct OK");
+
+        // Nullable member without a value stays null.
+        var tNull = TicketMappings.Map(new TicketSrc(8, "Low", null, 0));
+        if (tNull.Priority != Priority.Low || tNull.Estimate.HasValue || tNull.Points != 0L)
+            throw new InvalidOperationException(
+                $"[Map] nullable null path: got {tNull.Priority}/{tNull.Estimate}/{tNull.Points}");
+        Console.WriteLine("  value types: int?->int? null path OK");
+
+        // [TryMap] into a record struct — success carries the struct value.
+        var ok = TicketTryMappings.TryMap(new TicketSrc(9, "High", null, 4));
+        if (!ok.IsSuccess)
+            throw new InvalidOperationException($"[TryMap] record-struct success failed: {ok.Error.Code}");
+        if (ok.Value != new TicketDst(9, Priority.High, null, 4L))
+            throw new InvalidOperationException($"[TryMap] record-struct success value: {ok.Value}");
+
+        // [TryMap] failure — Enum.Parse rejects an unknown name.
+        var bad = TicketTryMappings.TryMap(new TicketSrc(10, "Urgent", 1, 1));
+        if (bad.IsSuccess || bad.Error.Code != "mapping.constructor.threw")
+            throw new InvalidOperationException("[TryMap] record-struct failure path did not fail as expected");
+        Console.WriteLine("  value types: TryMap record struct success and failure OK");
+
+        // [TryMap] List overload over a record-struct destination, all succeed.
+        var list = TicketTryMappings.TryMap(new System.Collections.Generic.List<TicketSrc>
+        {
+            new(1, "Low", 2, 5),
+            new(2, "High", null, 6),
+        });
+        if (!list.IsSuccess || list.Value.Count != 2
+            || list.Value[0] != new TicketDst(1, Priority.Low, 2, 5L)
+            || list.Value[1] != new TicketDst(2, Priority.High, null, 6L))
+            throw new InvalidOperationException("[TryMap] List<TSrc> record-struct success payload unexpected");
+
+        // [TryMap] List overload with one bad element — aggregated failure indexes it.
+        var listBad = TicketTryMappings.TryMap(new System.Collections.Generic.List<TicketSrc>
+        {
+            new(1, "Low", 2, 5),
+            new(2, "Nope", null, 6),
+        });
+        if (listBad.IsSuccess || listBad.Error.Code != "mapping.collection.elements_failed"
+            || listBad.Error.Children is not { Count: 1 } children || children[0].PropertyPath != "[1]")
+            throw new InvalidOperationException("[TryMap] List<TSrc> element failure not reported as expected");
+        Console.WriteLine("  value types: TryMap List<TSrc> success and element failure OK");
     }
 
     private static void ExerciseAllocationGates()

@@ -51,6 +51,9 @@ jobs:
 
   aot-smoke:
     runs-on: ubuntu-latest
+    # A hung smoke must fail fast instead of burning the 6-hour default.
+    # Typical run is about one minute.
+    timeout-minutes: 15
     # Publishes samples/ZeroAlloc.Mapping.AotSmoke with PublishAot=true and runs
     # the binary. Exercises both [Map] and [TryMap] paths the generator emits.
     steps:
@@ -77,7 +80,9 @@ jobs:
         run: dotnet publish samples/ZeroAlloc.Mapping.AotSmoke/ZeroAlloc.Mapping.AotSmoke.csproj -r linux-x64 -c Release -o ./aot-out
 
       - name: Run AOT binary
-        run: ./aot-out/ZeroAlloc.Mapping.AotSmoke
+        # Bounded so a NativeAOT hang fails the job, exit code 124, see
+        # ZeroAlloc-Net/ZeroAlloc.Cache#182 and dotnet/runtime#134799.
+        run: timeout --kill-after=10s 120s ./aot-out/ZeroAlloc.Mapping.AotSmoke
 
   api-compat:
     uses: ZeroAlloc-Net/.github/.github/workflows/api-compat.yml@main
