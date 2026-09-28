@@ -43,7 +43,7 @@ internal static class MapperDiscovery
                             BaseTypeFqn: pBase.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
                             BaseDestinationTypeFqn: pBaseDst.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
                             Kind: MappingKind.Map,
-                            Location: type.Locations.FirstOrDefault() ?? Location.None,
+                            Location: AttributeLocation(attr, type.Locations[0]),
                             BaseTypeSymbol: pBase,
                             BaseDestinationTypeSymbol: pBaseDst));
                     }
@@ -59,7 +59,7 @@ internal static class MapperDiscovery
                             BaseTypeFqn: pBase.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
                             BaseDestinationTypeFqn: pBaseDst.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
                             Kind: MappingKind.TryMap,
-                            Location: type.Locations.FirstOrDefault() ?? Location.None,
+                            Location: AttributeLocation(attr, type.Locations[0]),
                             BaseTypeSymbol: pBase,
                             BaseDestinationTypeSymbol: pBaseDst));
                     }
@@ -76,7 +76,7 @@ internal static class MapperDiscovery
                         SourceTypeFqn: reverseTypeArgs[0].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
                         DestinationTypeFqn: reverseTypeArgs[1].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
                         Kind: MappingKind.Map,
-                        Location: type.Locations.FirstOrDefault() ?? Location.None,
+                        Location: AttributeLocation(attr, type.Locations[0]),
                         UserPartialMethod: fwdPartial,
                         FromReverse: true,
                         SourceTypeSymbol: reverseTypeArgs[0] as INamedTypeSymbol,
@@ -85,7 +85,7 @@ internal static class MapperDiscovery
                         SourceTypeFqn: reverseTypeArgs[1].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
                         DestinationTypeFqn: reverseTypeArgs[0].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
                         Kind: MappingKind.Map,
-                        Location: type.Locations.FirstOrDefault() ?? Location.None,
+                        Location: AttributeLocation(attr, type.Locations[0]),
                         UserPartialMethod: revPartial,
                         FromReverse: true,
                         SourceTypeSymbol: reverseTypeArgs[1] as INamedTypeSymbol,
@@ -102,7 +102,7 @@ internal static class MapperDiscovery
                         SourceTypeFqn: reverseTypeArgs[0].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
                         DestinationTypeFqn: reverseTypeArgs[1].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
                         Kind: MappingKind.TryMap,
-                        Location: type.Locations.FirstOrDefault() ?? Location.None,
+                        Location: AttributeLocation(attr, type.Locations[0]),
                         UserPartialMethod: fwdPartial,
                         FromReverse: true,
                         SourceTypeSymbol: reverseTypeArgs[0] as INamedTypeSymbol,
@@ -111,7 +111,7 @@ internal static class MapperDiscovery
                         SourceTypeFqn: reverseTypeArgs[1].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
                         DestinationTypeFqn: reverseTypeArgs[0].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
                         Kind: MappingKind.TryMap,
-                        Location: type.Locations.FirstOrDefault() ?? Location.None,
+                        Location: AttributeLocation(attr, type.Locations[0]),
                         UserPartialMethod: revPartial,
                         FromReverse: true,
                         SourceTypeSymbol: reverseTypeArgs[1] as INamedTypeSymbol,
@@ -150,7 +150,7 @@ internal static class MapperDiscovery
                     SourceTypeFqn: typeArgs[0].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
                     DestinationTypeFqn: typeArgs[1].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
                     Kind: kind,
-                    Location: type.Locations.FirstOrDefault() ?? Location.None,
+                    Location: AttributeLocation(attr, type.Locations[0]),
                     UserPartialMethod: userPartial,
                     UpdateInPlacePartial: updateInPlace,
                     Projection: projection,
@@ -219,6 +219,17 @@ internal static class MapperDiscovery
                 SkipCollectionOverloads: skipCollectionOverloads);
         }
     }
+
+    /// <summary>
+    /// The location of an attribute as it is written, <c>Map&lt;Src, Dst&gt;(...)</c> without the
+    /// brackets, so a diagnostic about one mapping is not shared with the other mappings of its
+    /// class and a <c>#pragma warning disable</c> can silence it alone. An attribute declared in
+    /// source always has syntax; the fallback is for one that is not.
+    /// </summary>
+    internal static Location AttributeLocation(AttributeData attribute, Location fallback) =>
+        attribute.ApplicationSyntaxReference is { } syntax
+            ? Location.Create(syntax.SyntaxTree, syntax.Span)
+            : fallback;
 
     private static IMethodSymbol? FindUserPartialMethod(INamedTypeSymbol owner, MappingKind kind, ITypeSymbol src, ITypeSymbol dst)
     {

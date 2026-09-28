@@ -72,7 +72,7 @@ internal static class CycleSafeDeepCloneEmitter
             {
                 diagnosticSink(Diagnostic.Create(
                     Diagnostics.ZAMP021_DeepCloneCycleSafePrimaryCtorCycle,
-                    location: null,
+                    originatingDecl.Location,
                     originatingDecl.SourceTypeFqn,
                     originatingDecl.DestinationTypeFqn,
                     type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)));
