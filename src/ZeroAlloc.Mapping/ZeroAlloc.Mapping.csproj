@@ -33,9 +33,21 @@
     Bundle the source generator into the NuGet package so consumers get it by
     referencing only ZeroAlloc.Mapping. Mirrors the pattern in ZeroAlloc.Cache.
   -->
+  <!--
+    Bundle the generator DLL the build actually produced. Asking the generator project for its
+    target path, instead of hardcoding bin\$(Configuration)\netstandard2.0, follows any output
+    redirection such as artifacts-path. The hardcoded path silently bundled whatever stale DLL
+    sat in the repository's bin folder, at whatever version that DLL had been built with.
+    See ZeroAlloc-Net/.github#43.
+  -->
   <Target Name="IncludeGeneratorInPackage" BeforeTargets="_GetPackageFiles">
+    <MSBuild Projects="..\ZeroAlloc.Mapping.Generator\ZeroAlloc.Mapping.Generator.csproj"
+             Targets="GetTargetPath"
+             RemoveProperties="TargetFramework;RuntimeIdentifier;SelfContained">
+      <Output TaskParameter="TargetOutputs" ItemName="_ZeroAllocMappingGeneratorAssembly" />
+    </MSBuild>
     <ItemGroup>
-      <None Include="$(MSBuildThisFileDirectory)..\ZeroAlloc.Mapping.Generator\bin\$(Configuration)\netstandard2.0\ZeroAlloc.Mapping.Generator.dll"
+      <None Include="@(_ZeroAllocMappingGeneratorAssembly)"
             Pack="true"
             PackagePath="analyzers/dotnet/cs"
             Visible="false" />
