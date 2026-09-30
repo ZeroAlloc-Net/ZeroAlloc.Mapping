@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.6.8](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/compare/v1.6.7...v1.6.8) (2026-09-30)
+
+
+### Bug Fixes
+
+* chain [TryMap] to nested mappings and map value-type sources ([#145](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/issues/145)) ([3a8ac2b](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/3a8ac2bcb6796289aefc99b88b0f5904d75d79a0)), closes [#140](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/issues/140)
+* convert collection elements implicitly and report ZAMP002 when they do not ([#146](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/issues/146)) ([19db742](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/19db74235039e9ce3fa63fa9d91de22077dd4f03)), closes [#143](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/issues/143)
+* generate mappings over nested, generic and verbatim-named types ([#141](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/issues/141)) ([c097de3](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/c097de3adab55ba00d1fe350ec5bf3bda8201a19)), closes [#136](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/issues/136)
+* generate nested and generic mappers into the mapper itself ([#139](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/issues/139)) ([38f40b0](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/38f40b036c51ec933a402871433ac637f26e0a2c)), closes [#134](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/issues/134)
+* name generated files after the host's namespace and containing types ([#137](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/issues/137)) ([f5d7c2e](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/f5d7c2e0f20bf6fd809d0ec725d29ad8d79ce03c)), closes [#131](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/issues/131)
+* report mapper hosts whose names differ only in case ([#142](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/issues/142)) ([454a0c5](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/454a0c511e89762096eb2540a253af85c39223fc)), closes [#135](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/issues/135)
+* report mappings between two built-in types as ZAMP023 ([#147](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/issues/147)) ([c6ed97d](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/c6ed97de9f741276fc285acfcca18533fe55159a)), closes [#144](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/issues/144)
+
 ## [1.6.7](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/compare/v1.6.6...v1.6.7) (2026-09-30)
 
 
