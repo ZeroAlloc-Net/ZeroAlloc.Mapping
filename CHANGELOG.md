@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.6.7](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/compare/v1.6.6...v1.6.7) (2026-09-30)
+
+
+### Bug Fixes
+
+* report explicit conversions as ZAMP002 instead of emitting them uncast ([#132](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/issues/132)) ([402fb0e](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/402fb0e0c5e7e3ef1169e5116094e4c5a412e816)), closes [#127](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/issues/127)
+
+
+### Performance Improvements
+
+* make the mapping generator incremental ([#130](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/issues/130)) ([5328419](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/5328419d0e3b8fec5a77d2edf3fc32cbb12ab6bc)), closes [#129](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/issues/129)
+
 ## [1.6.6](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/compare/v1.6.5...v1.6.6) (2026-09-28)
 
 
