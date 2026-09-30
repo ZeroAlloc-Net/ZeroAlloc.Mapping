@@ -27,12 +27,12 @@ internal static class CycleSafeDeepCloneEmitter
     /// explicit nested [Map&lt;,&gt;] (those already have a Map(src, tracker) overload).
     /// </summary>
     /// <param name="diagnosticSink">Callback fired for each ZAMP021 to report. Caller decides
-    /// where the diagnostics are routed (typically through the MappingGenerator's
-    /// SourceProductionContext.ReportDiagnostic).</param>
+    /// where the diagnostics are routed (typically into the host's MapperOutput, which the
+    /// MappingGenerator reports).</param>
     public static Dictionary<INamedTypeSymbol, ReachableTypeInfo> CollectReachableTypes(
         MapperClass cls,
         Compilation comp,
-        System.Action<Diagnostic>? diagnosticSink = null)
+        System.Action<DiagnosticInfo>? diagnosticSink = null)
     {
         var collected = new Dictionary<INamedTypeSymbol, ReachableTypeInfo>(SymbolEqualityComparer.Default);
 
@@ -57,7 +57,7 @@ internal static class CycleSafeDeepCloneEmitter
         Dictionary<INamedTypeSymbol, ReachableTypeInfo> collected,
         HashSet<INamedTypeSymbol> visiting,
         MappingDecl originatingDecl,
-        System.Action<Diagnostic>? diagnosticSink)
+        System.Action<DiagnosticInfo>? diagnosticSink)
     {
         // Stop at: value type / string. Caller filters these before calling, but defensive here.
         if (type.IsValueType || type.SpecialType == SpecialType.System_String) return;
@@ -70,7 +70,7 @@ internal static class CycleSafeDeepCloneEmitter
 
             if (!hasParameterless && diagnosticSink is not null)
             {
-                diagnosticSink(Diagnostic.Create(
+                diagnosticSink(DiagnosticInfo.Create(
                     Diagnostics.ZAMP021_DeepCloneCycleSafePrimaryCtorCycle,
                     originatingDecl.Location,
                     originatingDecl.SourceTypeFqn,

@@ -1,76 +1,107 @@
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace ZeroAlloc.Mapping.Generator;
 
 [Generator(LanguageNames.CSharp)]
 public sealed class MappingGenerator : IIncrementalGenerator
 {
+    /// <summary>
+    /// The mapping attributes that make a type a mapper host, each paired with the name of the
+    /// pipeline step that finds its hosts.
+    /// </summary>
+    private static readonly (string AttributeFqn, string TrackingName)[] HostAttributes =
+    {
+        (MapperDiscovery.MapAttributeFqn, "MapperHosts.Map"),
+        (MapperDiscovery.TryMapAttributeFqn, "MapperHosts.TryMap"),
+        (MapperDiscovery.ReverseMapAttributeFqn, "MapperHosts.ReverseMap"),
+        (MapperDiscovery.ReverseTryMapAttributeFqn, "MapperHosts.ReverseTryMap"),
+        (MapperDiscovery.PolymorphicMapAttributeFqn, "MapperHosts.PolymorphicMap"),
+        (MapperDiscovery.PolymorphicTryMapAttributeFqn, "MapperHosts.PolymorphicTryMap"),
+    };
+
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
-        context.RegisterSourceOutput(context.CompilationProvider, (spc, comp) =>
+        foreach (var (attributeFqn, trackingName) in HostAttributes)
         {
-            // ZAMP006 — non-static-partial class hosts get reported during discovery.
-            ReportNonStaticPartialHosts(spc, comp);
+            var hosts = context.SyntaxProvider
+                .ForAttributeWithMetadataName(
+                    attributeFqn,
+                    predicate: static (node, _) => node is BaseTypeDeclarationSyntax or DelegateDeclarationSyntax,
+                    transform: static (ctx, ct) => BuildOutput(ctx, ct))
+                .Where(static o => o is not null)
+                .Select(static (o, _) => o!)
+                .WithTrackingName(trackingName);
 
-            var classes = MapperDiscovery.Discover(comp).ToList();
-            if (classes.Count == 0) return;
-
-            foreach (var c in classes)
+            context.RegisterSourceOutput(hosts, static (spc, output) =>
             {
-                ReportPerClassDiagnostics(spc, c, comp);
-                var (src, mapEmitterDiagnostics) = MapEmitter.Emit(c, comp);
-                foreach (var d in mapEmitterDiagnostics) spc.ReportDiagnostic(d);
-                spc.AddSource($"{c.ClassName}.g.cs", src);
-            }
-        });
-    }
-
-    private static void ReportNonStaticPartialHosts(SourceProductionContext spc, Compilation comp)
-    {
-        var mapAttr = comp.GetTypeByMetadataName(MapperDiscovery.MapAttributeFqn);
-        var tryMapAttr = comp.GetTypeByMetadataName(MapperDiscovery.TryMapAttributeFqn);
-        var reverseMapAttr = comp.GetTypeByMetadataName(MapperDiscovery.ReverseMapAttributeFqn);
-        var reverseTryMapAttr = comp.GetTypeByMetadataName(MapperDiscovery.ReverseTryMapAttributeFqn);
-        var polymorphicMapAttr = comp.GetTypeByMetadataName(MapperDiscovery.PolymorphicMapAttributeFqn);
-        var polymorphicTryMapAttr = comp.GetTypeByMetadataName(MapperDiscovery.PolymorphicTryMapAttributeFqn);
-        if (mapAttr is null && tryMapAttr is null && reverseMapAttr is null && reverseTryMapAttr is null
-            && polymorphicMapAttr is null && polymorphicTryMapAttr is null) return;
-
-        foreach (var type in EnumerateTypes(comp.GlobalNamespace))
-        {
-            var hasAny = type.GetAttributes().Any(a =>
-            {
-                var orig = a.AttributeClass?.OriginalDefinition;
-                return (mapAttr is not null && SymbolEqualityComparer.Default.Equals(orig, mapAttr))
-                    || (tryMapAttr is not null && SymbolEqualityComparer.Default.Equals(orig, tryMapAttr))
-                    || (reverseMapAttr is not null && SymbolEqualityComparer.Default.Equals(orig, reverseMapAttr))
-                    || (reverseTryMapAttr is not null && SymbolEqualityComparer.Default.Equals(orig, reverseTryMapAttr))
-                    || (polymorphicMapAttr is not null && SymbolEqualityComparer.Default.Equals(orig, polymorphicMapAttr))
-                    || (polymorphicTryMapAttr is not null && SymbolEqualityComparer.Default.Equals(orig, polymorphicTryMapAttr));
+                foreach (var d in output.Diagnostics) spc.ReportDiagnostic(d.ToDiagnostic());
+                if (output.HintName is not null && output.Source is not null)
+                    spc.AddSource(output.HintName, output.Source);
             });
-            if (!hasAny) continue;
-
-            // A mapper compiled into a referenced assembly keeps its attributes in metadata but has
-            // no syntax, so it would read as not partial. It is that assembly's mapper, not a host
-            // this compilation declares.
-            var declaration = type.Locations.FirstOrDefault(static l => l.IsInSource);
-            if (declaration is null) continue;
-
-            var isStaticPartial = type.IsStatic && type.DeclaringSyntaxReferences.Any(r =>
-                r.GetSyntax() is Microsoft.CodeAnalysis.CSharp.Syntax.ClassDeclarationSyntax c &&
-                c.Modifiers.Any(m => m.IsKind(Microsoft.CodeAnalysis.CSharp.SyntaxKind.PartialKeyword)));
-
-            if (!isStaticPartial)
-            {
-                spc.ReportDiagnostic(Diagnostic.Create(
-                    Diagnostics.ZAMP006_NotStaticPartialClass,
-                    declaration,
-                    type.ToDisplayString()));
-            }
         }
     }
 
-    private static void ReportPerClassDiagnostics(SourceProductionContext spc, MapperClass cls, Compilation comp)
+    /// <summary>
+    /// Does all of one host's semantic work and keeps only values: its source and diagnostics.
+    /// </summary>
+    /// <remarks>
+    /// A host carrying several mapping attributes, or one spread over several partial
+    /// declarations, is matched by more than one provider. Only the match holding its first
+    /// mapping attribute builds the output, so each host is generated once.
+    /// </remarks>
+    private static MapperOutput? BuildOutput(GeneratorAttributeSyntaxContext ctx, System.Threading.CancellationToken ct)
+    {
+        if (ctx.TargetSymbol is not INamedTypeSymbol type) return null;
+
+        var comp = ctx.SemanticModel.Compilation;
+        var attributes = new MapperDiscovery.AttributeSymbols(comp);
+        if (!OwnsHost(ctx, type, attributes)) return null;
+
+        ct.ThrowIfCancellationRequested();
+
+        var diagnostics = new System.Collections.Generic.List<DiagnosticInfo>();
+
+        // ZAMP006 — a mapping attribute on anything but a static partial class.
+        if (!MapperDiscovery.IsStaticPartialClass(type))
+        {
+            var declaration = type.Locations.FirstOrDefault(static l => l.IsInSource) ?? ctx.TargetNode.GetLocation();
+            diagnostics.Add(DiagnosticInfo.Create(
+                Diagnostics.ZAMP006_NotStaticPartialClass,
+                declaration,
+                type.ToDisplayString()));
+            return new MapperOutput(null, null, ToEquatable(diagnostics));
+        }
+
+        var cls = MapperDiscovery.DiscoverHost(type, attributes);
+        if (cls is null) return null;
+
+        ReportPerClassDiagnostics(diagnostics, cls, comp);
+        var (src, mapEmitterDiagnostics) = MapEmitter.Emit(cls, comp);
+        diagnostics.AddRange(mapEmitterDiagnostics);
+        return new MapperOutput($"{cls.ClassName}.g.cs", src, ToEquatable(diagnostics));
+    }
+
+    private static bool OwnsHost(GeneratorAttributeSyntaxContext ctx, INamedTypeSymbol type, MapperDiscovery.AttributeSymbols attributes)
+    {
+        var first = type.GetAttributes().FirstOrDefault(attributes.IsMappingAttribute)?.ApplicationSyntaxReference;
+        if (first is null) return false;
+        foreach (var a in ctx.Attributes)
+        {
+            if (a.ApplicationSyntaxReference is { } syntax &&
+                syntax.SyntaxTree == first.SyntaxTree &&
+                syntax.Span == first.Span)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static EquatableArray<DiagnosticInfo> ToEquatable(System.Collections.Generic.List<DiagnosticInfo> diagnostics) =>
+        new(System.Collections.Immutable.ImmutableArray.CreateRange(diagnostics));
+
+    private static void ReportPerClassDiagnostics(System.Collections.Generic.List<DiagnosticInfo> diagnostics, MapperClass cls, Compilation comp)
     {
         // ZAMP016 — duplicate [MappingCulture] across partial parts.
         if (cls.Culture is not null && cls.TypeSymbol is not null)
@@ -91,7 +122,7 @@ public sealed class MappingGenerator : IIncrementalGenerator
             }
             if (duplicate is not null)
             {
-                spc.ReportDiagnostic(Diagnostic.Create(
+                diagnostics.Add(DiagnosticInfo.Create(
                     Diagnostics.ZAMP016_DuplicateMappingCulture,
                     MapperDiscovery.AttributeLocation(duplicate, cls.TypeSymbol.Locations[0]),
                     cls.TypeSymbol.ToDisplayString(),
@@ -121,7 +152,7 @@ public sealed class MappingGenerator : IIncrementalGenerator
                 {
                     if (!IsCycleSafe(nestedSrcFqn, nestedDstFqn, cls))
                     {
-                        spc.ReportDiagnostic(Diagnostic.Create(
+                        diagnostics.Add(DiagnosticInfo.Create(
                             Diagnostics.ZAMP018_CycleSafeMissingOnNested,
                             decl.Location,
                             decl.SourceTypeFqn, decl.DestinationTypeFqn,
@@ -153,7 +184,7 @@ public sealed class MappingGenerator : IIncrementalGenerator
                         // the entire DeepClone walk when CycleSafe = true).
                         if (firedZamp020.Add(rt.DestinationFqn))
                         {
-                            spc.ReportDiagnostic(Diagnostic.Create(
+                            diagnostics.Add(DiagnosticInfo.Create(
                                 Diagnostics.ZAMP020_DeepCloneCyclicTypeGraph,
                                 decl.Location,
                                 decl.SourceTypeFqn, decl.DestinationTypeFqn,
@@ -165,7 +196,7 @@ public sealed class MappingGenerator : IIncrementalGenerator
                     if (!DeepCloneEmitter.IsCloneable(rt.Destination, rt.Source) &&
                         firedZamp019.Add(rt.DestinationFqn))
                     {
-                        spc.ReportDiagnostic(Diagnostic.Create(
+                        diagnostics.Add(DiagnosticInfo.Create(
                             Diagnostics.ZAMP019_DeepCloneUncloneableType,
                             decl.Location,
                             decl.SourceTypeFqn, decl.DestinationTypeFqn,
@@ -178,7 +209,7 @@ public sealed class MappingGenerator : IIncrementalGenerator
             {
                 if (!string.IsNullOrEmpty(cls.Culture))
                 {
-                    spc.ReportDiagnostic(Diagnostic.Create(
+                    diagnostics.Add(DiagnosticInfo.Create(
                         Diagnostics.ZAMP017_ProjectionIncompatibleFeature,
                         decl.Location,
                         decl.SourceTypeFqn, decl.DestinationTypeFqn,
@@ -186,7 +217,7 @@ public sealed class MappingGenerator : IIncrementalGenerator
                 }
                 if (cls.Hooks is not null && cls.Hooks.Count > 0)
                 {
-                    spc.ReportDiagnostic(Diagnostic.Create(
+                    diagnostics.Add(DiagnosticInfo.Create(
                         Diagnostics.ZAMP017_ProjectionIncompatibleFeature,
                         decl.Location,
                         decl.SourceTypeFqn, decl.DestinationTypeFqn,
@@ -194,7 +225,7 @@ public sealed class MappingGenerator : IIncrementalGenerator
                 }
                 if (cls.PolymorphicDecls is not null && cls.PolymorphicDecls.Count > 0)
                 {
-                    spc.ReportDiagnostic(Diagnostic.Create(
+                    diagnostics.Add(DiagnosticInfo.Create(
                         Diagnostics.ZAMP017_ProjectionIncompatibleFeature,
                         decl.Location,
                         decl.SourceTypeFqn, decl.DestinationTypeFqn,
@@ -215,7 +246,7 @@ public sealed class MappingGenerator : IIncrementalGenerator
                     var name = attr.AttributeClass?.Name;
                     if (name == "MapPropertyAttribute" || name == "MapValueAttribute" || name == "MapperIgnoreTargetAttribute")
                     {
-                        spc.ReportDiagnostic(Diagnostic.Create(
+                        diagnostics.Add(DiagnosticInfo.Create(
                             Diagnostics.ZAMP009_ReverseMapNotSymmetric,
                             MapperDiscovery.AttributeLocation(attr, decl.Location),
                             src.ToDisplayString(),
@@ -242,7 +273,7 @@ public sealed class MappingGenerator : IIncrementalGenerator
                     var matchingParam = match.Constructor.Parameters
                         .FirstOrDefault(p => string.Equals(p.Name, group.Key, System.StringComparison.OrdinalIgnoreCase));
                     if (matchingParam is null) continue;
-                    spc.ReportDiagnostic(Diagnostic.Create(
+                    diagnostics.Add(DiagnosticInfo.Create(
                         Diagnostics.ZAMP011_CaseInsensitiveAmbiguous,
                         decl.Location,
                         matchingParam.Name));
@@ -254,7 +285,7 @@ public sealed class MappingGenerator : IIncrementalGenerator
             {
                 if (decl.Kind == MappingKind.Map)
                 {
-                    spc.ReportDiagnostic(Diagnostic.Create(
+                    diagnostics.Add(DiagnosticInfo.Create(
                         Diagnostics.ZAMP001_DestinationHasNoSource,
                         decl.Location,
                         unmatched, dst.ToDisplayString()));
@@ -269,7 +300,7 @@ public sealed class MappingGenerator : IIncrementalGenerator
                     NestedMappingResolver.FindNestedMapper(cls, m.SourceType, m.TargetType) is null &&
                     NestedMappingResolver.AsCollection(m.SourceType) is null)
                 {
-                    spc.ReportDiagnostic(Diagnostic.Create(
+                    diagnostics.Add(DiagnosticInfo.Create(
                         Diagnostics.ZAMP002_NoConversionPath,
                         decl.Location,
                         m.TargetParamName,
@@ -287,7 +318,7 @@ public sealed class MappingGenerator : IIncrementalGenerator
                         m.TargetType.NullableAnnotation == NullableAnnotation.NotAnnotated &&
                         m.TargetType.IsReferenceType)
                     {
-                        spc.ReportDiagnostic(Diagnostic.Create(
+                        diagnostics.Add(DiagnosticInfo.Create(
                             Diagnostics.ZAMP007_NullableMismatch,
                             decl.Location,
                             m.TargetParamName));
@@ -303,7 +334,7 @@ public sealed class MappingGenerator : IIncrementalGenerator
                     var nested = NestedMappingResolver.FindNestedMapper(cls, m.SourceType, m.TargetType);
                     if (nested is { Kind: MappingKind.TryMap })
                     {
-                        spc.ReportDiagnostic(Diagnostic.Create(
+                        diagnostics.Add(DiagnosticInfo.Create(
                             Diagnostics.ZAMP004_MapChainsTryMap,
                             decl.Location,
                             m.SourceType.ToDisplayString(),
@@ -340,7 +371,7 @@ public sealed class MappingGenerator : IIncrementalGenerator
                                         .FirstOrDefault(p => p.Name == segment);
                                     if (found is null)
                                     {
-                                        spc.ReportDiagnostic(Diagnostic.Create(
+                                        diagnostics.Add(DiagnosticInfo.Create(
                                             Diagnostics.ZAMP005_MapPropertyTargetMissing,
                                             MapperDiscovery.AttributeLocation(attr, decl.Location), segment, cursor.ToDisplayString()));
                                         break;
@@ -350,14 +381,14 @@ public sealed class MappingGenerator : IIncrementalGenerator
                             }
                             else if (!sourceProps.Contains(srcName))
                             {
-                                spc.ReportDiagnostic(Diagnostic.Create(
+                                diagnostics.Add(DiagnosticInfo.Create(
                                     Diagnostics.ZAMP005_MapPropertyTargetMissing,
                                     MapperDiscovery.AttributeLocation(attr, decl.Location), srcName, src.ToDisplayString()));
                             }
                         }
                         if (dstName is not null && !ctorParams.Contains(dstName))
                         {
-                            spc.ReportDiagnostic(Diagnostic.Create(
+                            diagnostics.Add(DiagnosticInfo.Create(
                                 Diagnostics.ZAMP005_MapPropertyTargetMissing,
                                 MapperDiscovery.AttributeLocation(attr, decl.Location), dstName, dst.ToDisplayString()));
                         }
@@ -382,7 +413,7 @@ public sealed class MappingGenerator : IIncrementalGenerator
                 {
                     if (rename.Target is { } target && ctorParamNames.Contains(target) && sourcePropSet.Contains(target) && rename.Source != target)
                     {
-                        spc.ReportDiagnostic(Diagnostic.Create(
+                        diagnostics.Add(DiagnosticInfo.Create(
                             Diagnostics.ZAMP003_AmbiguousSource,
                             MapperDiscovery.AttributeLocation(rename.Attribute, decl.Location), target));
                     }
@@ -403,7 +434,7 @@ public sealed class MappingGenerator : IIncrementalGenerator
                         a.AttributeClass is { Name: "MapperIgnoreSourceAttribute" } ac &&
                         ac.ContainingNamespace is { Name: "Mapping", ContainingNamespace.Name: "ZeroAlloc" });
                     if (ignore) continue;
-                    spc.ReportDiagnostic(Diagnostic.Create(
+                    diagnostics.Add(DiagnosticInfo.Create(
                         Diagnostics.ZAMP010_UnconsumedSource,
                         decl.Location, p.Name, src.ToDisplayString()));
                 }
@@ -422,7 +453,7 @@ public sealed class MappingGenerator : IIncrementalGenerator
                     {
                         if (!m.IsSettable)
                         {
-                            spc.ReportDiagnostic(Diagnostic.Create(
+                            diagnostics.Add(DiagnosticInfo.Create(
                                 Diagnostics.ZAMP012_UpdateInPlace_NotSettable,
                                 decl.Location,
                                 dst.ToDisplayString(),
@@ -443,7 +474,7 @@ public sealed class MappingGenerator : IIncrementalGenerator
                 var maxArity = nonCopy.Select(c => c.Parameters.Length).DefaultIfEmpty(0).Max();
                 if (nonCopy.Count(c => c.Parameters.Length == maxArity) > 1)
                 {
-                    spc.ReportDiagnostic(Diagnostic.Create(
+                    diagnostics.Add(DiagnosticInfo.Create(
                         Diagnostics.ZAMP008_AmbiguousConstructor,
                         decl.Location, dst.ToDisplayString()));
                 }
@@ -462,7 +493,7 @@ public sealed class MappingGenerator : IIncrementalGenerator
                 // ZAMP014 — sealed base.
                 if (poly.BaseTypeSymbol.IsSealed)
                 {
-                    spc.ReportDiagnostic(Diagnostic.Create(
+                    diagnostics.Add(DiagnosticInfo.Create(
                         Diagnostics.ZAMP014_PolymorphicSealedBase,
                         poly.Location, kindLabel, baseDisplay, baseDstDisplay));
                 }
@@ -483,7 +514,7 @@ public sealed class MappingGenerator : IIncrementalGenerator
                 // ZAMP013 — no matching-kind cases.
                 if (matchingKind.Count == 0)
                 {
-                    spc.ReportDiagnostic(Diagnostic.Create(
+                    diagnostics.Add(DiagnosticInfo.Create(
                         Diagnostics.ZAMP013_PolymorphicNoCases,
                         poly.Location, kindLabel, baseDisplay, baseDstDisplay));
                 }
@@ -500,36 +531,11 @@ public sealed class MappingGenerator : IIncrementalGenerator
 
                 if (wrongKindOnlyPair)
                 {
-                    spc.ReportDiagnostic(Diagnostic.Create(
+                    diagnostics.Add(DiagnosticInfo.Create(
                         Diagnostics.ZAMP015_PolymorphicMixedKinds,
                         poly.Location, kindLabel, baseDisplay, baseDstDisplay));
                 }
             }
-        }
-    }
-
-    private static System.Collections.Generic.IEnumerable<INamedTypeSymbol> EnumerateTypes(INamespaceSymbol ns)
-    {
-        foreach (var member in ns.GetMembers())
-        {
-            if (member is INamedTypeSymbol t)
-            {
-                yield return t;
-                foreach (var nested in EnumerateNested(t)) yield return nested;
-            }
-            else if (member is INamespaceSymbol child)
-            {
-                foreach (var nested in EnumerateTypes(child)) yield return nested;
-            }
-        }
-    }
-
-    private static System.Collections.Generic.IEnumerable<INamedTypeSymbol> EnumerateNested(INamedTypeSymbol t)
-    {
-        foreach (var nested in t.GetTypeMembers())
-        {
-            yield return nested;
-            foreach (var deeper in EnumerateNested(nested)) yield return deeper;
         }
     }
 
