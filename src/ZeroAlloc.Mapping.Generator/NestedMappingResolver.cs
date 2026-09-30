@@ -19,6 +19,28 @@ internal static class NestedMappingResolver
         return null;
     }
 
+    /// <summary>
+    /// The nested mapping from <paramref name="source"/> to <paramref name="destination"/>,
+    /// preferring one of <paramref name="preferred"/> kind when the class declares both.
+    /// </summary>
+    public static MappingDecl? FindNestedMapper(
+        MapperClass owningClass,
+        ITypeSymbol source,
+        ITypeSymbol destination,
+        MappingKind preferred)
+    {
+        var srcFqn = source.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+        var dstFqn = destination.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+        MappingDecl? other = null;
+        foreach (var decl in owningClass.Mappings)
+        {
+            if (decl.SourceTypeFqn != srcFqn || decl.DestinationTypeFqn != dstFqn) continue;
+            if (decl.Kind == preferred) return decl;
+            other ??= decl;
+        }
+        return other;
+    }
+
     public static (ITypeSymbol Element, string CollectionKind)? AsCollection(ITypeSymbol type)
     {
         if (type is IArrayTypeSymbol arr)

@@ -34,7 +34,7 @@ The generator emits these codes; they're stable and safe to switch on.
 
 | Code | Used by |
 |---|---|
-| `mapping.source.null` | `[TryMap<,>]` when the source argument is `null` |
+| `mapping.source.null` | `[TryMap<,>]` when the source argument is `null`, or a member or collection element that needs a nested mapping is `null` and its destination is not nullable |
 | `mapping.constructor.threw` | `[TryMap<,>]` when the destination constructor throws (e.g. a smart-ctor validation failure) |
 | `mapping.parse.failed` | `Parse(...)` conversion throws — invalid format, overflow, etc. |
 | `mapping.collection.elements_failed` | `[TryMap<,>]` aggregate when at least one element of a collection mapping failed |
@@ -53,6 +53,17 @@ The generator builds paths mechanically:
 - `Items[5].Customer.Email` — combined indexed and nested path.
 
 When `Children` is populated (collection aggregate), each child carries the indexed path and the parent error's `PropertyPath` is `(root)` or the collection property's name.
+
+## Nested mappings under `[TryMap]`
+
+A `[TryMap<,>]` member whose types have a nested mapping declared on the same class chains to it, and so does each element of a collection member. When the class declares both a `[TryMap<,>]` and a `[Map<,>]` for the pair, the `[TryMap<,>]` is used.
+
+- A nested `[TryMap<,>]` failure returns at once, with the member's name prefixed to its path: `Customer.Email`.
+- For a collection member, every element is mapped. When any fail, the member fails with `mapping.collection.elements_failed` at the member's name, one child per failed element: `Items[5].Email`.
+- A `null` member or element maps to `null` when its destination is nullable, and fails with `mapping.source.null` at its path otherwise.
+- A nested `[Map<,>]` cannot fail this way. If it throws, the failure is `mapping.constructor.threw` at `(root)`.
+
+A value-type source has no `null` check, since it cannot be `null`.
 
 ## Result integration
 

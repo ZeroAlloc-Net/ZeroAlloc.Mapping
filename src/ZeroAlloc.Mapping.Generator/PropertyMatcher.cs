@@ -150,8 +150,10 @@ internal static class PropertyMatcher
                     SourceType: srcProp.Type,
                     TargetType: p.Type));
             }
-            else
+            else if (!p.IsOptional)
             {
+                // An optional parameter without a source keeps its default: the generated call
+                // leaves it out, which compiles. Only a required one is unmatched.
                 unmatched.Add(p.Name);
             }
         }

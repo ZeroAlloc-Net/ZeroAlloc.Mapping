@@ -341,15 +341,13 @@ public sealed class MappingGenerator : IIncrementalGenerator
             }
 
             // ZAMP001 — unmatched required destination params (those without [MapValue] or source).
+            // [TryMap] needs them as much as [Map]: the constructor call cannot be built without.
             foreach (var unmatched in match.UnmatchedTargetParams)
             {
-                if (decl.Kind == MappingKind.Map)
-                {
-                    diagnostics.Add(DiagnosticInfo.Create(
-                        Diagnostics.ZAMP001_DestinationHasNoSource,
-                        decl.Location,
-                        unmatched, dst.ToDisplayString()));
-                }
+                diagnostics.Add(DiagnosticInfo.Create(
+                    Diagnostics.ZAMP001_DestinationHasNoSource,
+                    decl.Location,
+                    unmatched, dst.ToDisplayString()));
             }
 
             // ZAMP002 — no conversion path on a matched pair.

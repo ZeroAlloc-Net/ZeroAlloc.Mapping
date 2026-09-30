@@ -148,6 +148,22 @@ public class AllocationBudgetTests
     }
 
     [Fact]
+    public void TryMap_NestedTryMap_HappyPath_WithinBudget()
+    {
+        // The outer and the nested destination; the chain itself allocates nothing more.
+        var req = new TryMapChain.Outer(1, new TryMapChain.Inner("a@b"));
+        AllocationGate.AssertBudget(120, 1000, () => _ = TryMapChain.ChainMappings.TryMap(req), "[TryMap] nested happy");
+    }
+
+    [Fact]
+    public void TryMap_NestedCollection_HappyPath_WithinBudget()
+    {
+        // The destination, its array and two elements; no failure list on the happy path.
+        var req = new TryMapChain.Batch(new List<TryMapChain.Inner> { new("a"), new("b") });
+        AllocationGate.AssertBudget(200, 1000, () => _ = TryMapChain.ChainMappings.TryMap(req), "[TryMap] nested collection happy");
+    }
+
+    [Fact]
     public void TryMap_DenyPath_WithinBudget()
     {
         var req = new SignUpRequest("");

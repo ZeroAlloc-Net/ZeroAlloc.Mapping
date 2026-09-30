@@ -56,13 +56,15 @@ internal static class TestHarness
         return new GeneratorRun(
             result.Results.SelectMany(r => r.GeneratedSources).Select(s => s.HintName).ToList(),
             generatorDiagnostics.ToList(),
-            output.GetDiagnostics().Where(d => d.Severity == DiagnosticSeverity.Error).ToList());
+            output.GetDiagnostics().Where(d => d.Severity == DiagnosticSeverity.Error).ToList(),
+            output.GetDiagnostics().Where(d => d.Severity == DiagnosticSeverity.Warning).ToList());
     }
 
     internal sealed record GeneratorRun(
         IReadOnlyList<string> HintNames,
         IReadOnlyList<Diagnostic> GeneratorDiagnostics,
-        IReadOnlyList<Diagnostic> Errors);
+        IReadOnlyList<Diagnostic> Errors,
+        IReadOnlyList<Diagnostic> Warnings);
 
     internal static IEnumerable<MetadataReference> References() => ReferenceAssemblies();
 
