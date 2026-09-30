@@ -129,6 +129,12 @@ The generator finds `[Map<OrderItemRequest, OrderItem>]` on the same class and e
 
 This composes the same way for nested object properties (not collections) — declare `[Map<CustomerRequest, Customer>]` alongside the outer mapping and the generator chains the sibling call automatically.
 
+## Element Conversion
+
+Without a nested mapper, a collection property still maps when its elements convert implicitly, the same rule as for a single property. `List<int>` maps to `List<long>`, `long[]` or `IReadOnlyList<long>`, and `List<int>` maps to `int[]`. The generator copies the collection into the destination kind and converts each element. A `null` source collection maps to `null` when the destination property is nullable.
+
+When the elements convert only explicitly, such as `long` to `int`, or not at all, such as `string` to `Guid`, the property gets [ZAMP002](diagnostics.md#zamp002--no-conversion-path-between-source-and-destination-property), and the message names the element types. Declare a nested mapper for the elements, or change one of the types.
+
 ## Opt-Out — `[SkipCollectionOverloads]`
 
 Class-level marker. Suppresses generation of the four collection overloads for **every** `[Map]`/`[TryMap]` on the class. The single-element method still emits.

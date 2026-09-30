@@ -357,9 +357,16 @@ public sealed class MappingGenerator : IIncrementalGenerator
                 {
                     var from = m.SourceType.ToDisplayString();
                     var to = m.TargetType.ToDisplayString();
-                    var reason = conv.Kind == ConversionKind.Explicit
-                        ? $"only an explicit conversion from '{from}' to '{to}' exists, which can throw or lose data, and the generator applies implicit conversions only"
-                        : "no implicit conversion, single-arg ctor, Parse, or nested mapper";
+                    var reason = conv switch
+                    {
+                        { Collection: { ElementKind: ConversionKind.Explicit } c } =>
+                            $"only an explicit conversion from element '{c.SourceElement.ToDisplayString()}' to '{c.TargetElement.ToDisplayString()}' exists, which can throw or lose data, and the generator applies implicit conversions only",
+                        { Collection: { } c } =>
+                            $"no implicit conversion from element '{c.SourceElement.ToDisplayString()}' to '{c.TargetElement.ToDisplayString()}', and no nested mapper for the elements",
+                        { Kind: ConversionKind.Explicit } =>
+                            $"only an explicit conversion from '{from}' to '{to}' exists, which can throw or lose data, and the generator applies implicit conversions only",
+                        _ => "no implicit conversion, single-arg ctor, Parse, or nested mapper",
+                    };
                     diagnostics.Add(DiagnosticInfo.Create(
                         Diagnostics.ZAMP002_NoConversionPath,
                         decl.Location,

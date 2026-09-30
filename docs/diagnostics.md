@@ -74,6 +74,8 @@ public static partial class M
 
 Only implicit conversions are applied. An explicit conversion can throw or lose data, so it is reported as ZAMP002 too, and the message names it: `int?` to `int`, one enum to a different enum, or a narrowing numeric such as `long` to `int`. The generator leaves the member out of the generated mapping instead of emitting an argument that cannot compile. To fix it, change one of the types so the conversion is implicit, or write that mapping by hand.
 
+For two collections without a nested mapper for their elements, the same rule applies to the elements, and the message names them: `List<long>` to `List<int>` reports an explicit conversion from element `long` to `int`. A collection mapped to a type that is not a collection has no path either.
+
 **Triggering code** (from `DiagnosticTests.ZAMP002_NoConversionPath_Reported`):
 
 ```csharp

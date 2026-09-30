@@ -16,9 +16,30 @@ internal enum ConversionKind
     SingleArgConstructor,
     Parse,
     EnumParse,
+    /// <summary>
+    /// A collection whose elements convert by identity or implicitly, copied element by element
+    /// into the destination collection kind.
+    /// </summary>
+    CollectionElements,
 }
 
-internal sealed record Conversion(ConversionKind Kind, IMethodSymbol? Method = null);
+/// <summary>
+/// How a member converts. <see cref="Collection"/> is set when both sides are collections: for
+/// <see cref="ConversionKind.CollectionElements"/> it says how, and for a member without a path
+/// it names the element types that do not convert.
+/// </summary>
+internal sealed record Conversion(ConversionKind Kind, IMethodSymbol? Method = null, CollectionConversion? Collection = null);
+
+/// <summary>
+/// The element conversion of a collection member. <see cref="NullPassThrough"/> is set when a
+/// null source collection maps to a null destination.
+/// </summary>
+internal sealed record CollectionConversion(
+    ITypeSymbol SourceElement,
+    ITypeSymbol TargetElement,
+    ConversionKind ElementKind,
+    string TargetCollectionKind,
+    bool NullPassThrough);
 
 internal static class ConversionResolver
 {
@@ -68,20 +89,44 @@ internal static class ConversionResolver
                 return new Conversion(ConversionKind.Parse, parse);
         }
 
+        // Two collections whose elements convert implicitly are copied element by element.
+        // When the elements do not, the conversion names them, for ZAMP002.
+        if (NestedMappingResolver.AsCollection(source) is { } sc && NestedMappingResolver.AsCollection(target) is { } tc)
+        {
+            var element = Resolve(sc.Element, tc.Element, comp).Kind;
+            var converts = element is ConversionKind.Identity or ConversionKind.ImplicitCast;
+            var collection = new CollectionConversion(
+                sc.Element,
+                tc.Element,
+                converts || element == ConversionKind.Explicit ? element : ConversionKind.None,
+                tc.CollectionKind,
+                NullPassThrough: CanBeNull(source) && IsNullable(target));
+            return new Conversion(converts ? ConversionKind.CollectionElements : ConversionKind.None, Collection: collection);
+        }
+
         return new Conversion(explicitOnly ? ConversionKind.Explicit : ConversionKind.None);
     }
 
+    private static bool CanBeNull(ITypeSymbol type) =>
+        !type.IsValueType || type.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T;
+
+    private static bool IsNullable(ITypeSymbol type) =>
+        type.NullableAnnotation == NullableAnnotation.Annotated ||
+        type.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T;
+
     /// <summary>
     /// True when a matched member has no conversion the generator applies: no implicit
-    /// conversion, constructor or Parse, no nested mapper and no collection mapping. Such a
-    /// member is reported as ZAMP002 and left out of the generated mapping.
+    /// conversion, constructor or Parse, no nested mapper, and, for two collections, neither an
+    /// implicit element conversion nor a nested mapper for the elements. Such a member is
+    /// reported as ZAMP002 and left out of the generated mapping.
     /// </summary>
     public static bool HasNoConversionPath(PropertyMapping m, MapperClass cls, Compilation comp, out Conversion conversion)
     {
         conversion = Resolve(m.SourceType, m.TargetType, comp);
-        return conversion.Kind is ConversionKind.None or ConversionKind.Explicit &&
-            NestedMappingResolver.FindNestedMapper(cls, m.SourceType, m.TargetType) is null &&
-            NestedMappingResolver.AsCollection(m.SourceType) is null;
+        if (conversion.Kind is not (ConversionKind.None or ConversionKind.Explicit)) return false;
+        if (NestedMappingResolver.FindNestedMapper(cls, m.SourceType, m.TargetType) is not null) return false;
+        return conversion.Collection is not { } c ||
+            NestedMappingResolver.FindNestedMapper(cls, c.SourceElement, c.TargetElement) is null;
     }
 
     public static string Apply(Conversion conv, string srcExpr, ITypeSymbol target, string? culture = null)
@@ -95,8 +140,30 @@ internal static class ConversionResolver
             ConversionKind.Parse => HasFormatProvider(conv.Method)
                 ? $"{target.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}.Parse({srcExpr}, {CultureExpr(culture)})"
                 : $"{target.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}.Parse({srcExpr})",
+            ConversionKind.CollectionElements => ApplyCollection(conv.Collection!, srcExpr),
             _ => srcExpr,
         };
+    }
+
+    private static readonly SymbolDisplayFormat NullableQualifiedFormat =
+        SymbolDisplayFormat.FullyQualifiedFormat.AddMiscellaneousOptions(
+            SymbolDisplayMiscellaneousOptions.IncludeNullableReferenceTypeModifier);
+
+    /// <summary>
+    /// Copies a collection into the destination kind, casting each element when the element
+    /// types differ. The cast only spells out an implicit conversion. The lambda is not static,
+    /// so the same expression works inside a projection's expression tree.
+    /// </summary>
+    private static string ApplyCollection(CollectionConversion c, string srcExpr)
+    {
+        var elements = c.ElementKind == ConversionKind.Identity
+            ? srcExpr
+            : "global::System.Linq.Enumerable.Select(" + srcExpr + ", __x => (" +
+              c.TargetElement.ToDisplayString(NullableQualifiedFormat) + ")__x)";
+        var copy = (c.TargetCollectionKind == "array"
+            ? "global::System.Linq.Enumerable.ToArray("
+            : "global::System.Linq.Enumerable.ToList(") + elements + ")";
+        return c.NullPassThrough ? "(" + srcExpr + " is null ? null : " + copy + ")" : copy;
     }
 
     private static string CultureExpr(string? culture) =>
