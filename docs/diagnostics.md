@@ -43,7 +43,7 @@ The source-of-truth for descriptors is `src/ZeroAlloc.Mapping.Generator/Diagnost
 
 **Severity**: Error.
 
-**Trigger**: A required destination constructor parameter (or required property) has no matching source property by name, no `[MapProperty]` rename pointing at it, and no `[MapValue]` constant covering it.
+**Trigger**: A required destination constructor parameter (or required property) has no matching source property by name, no `[MapProperty]` rename pointing at it, and no `[MapValue]` constant covering it. This applies to `[Map]` and `[TryMap]` alike. A parameter with a default value is not required: without a source it keeps its default.
 
 **Triggering code** (from `DiagnosticTests.ZAMP001_DestinationHasNoSource_Reported`):
 
