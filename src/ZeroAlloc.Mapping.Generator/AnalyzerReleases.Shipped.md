@@ -56,3 +56,13 @@ ZAMP020 | ZeroAlloc.Mapping | Error    | [Map(DeepClone = true)] walks a cyclic 
 Rule ID | Category          | Severity | Notes
 --------|-------------------|----------|-----------------------------------------------------------------------------------------
 ZAMP021 | ZeroAlloc.Mapping | Error    | [Map(DeepClone = true, CycleSafe = true)] reaches a primary-ctor-only type in a cycle
+
+## Release 1.6.8
+
+### New Rules
+
+Rule ID | Category          | Severity | Notes
+--------|-------------------|----------|-------------------------------------------------------------
+ZAMP022 | ZeroAlloc.Mapping | Warning  | Nested mapper inside a containing type that is not partial
+ZAMP023 | ZeroAlloc.Mapping | Warning  | Mapping cannot be generated for its source and destination types
+ZAMP024 | ZeroAlloc.Mapping | Error    | Mapper name differs only in case from another mapper
