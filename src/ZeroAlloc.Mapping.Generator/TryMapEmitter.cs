@@ -25,10 +25,15 @@ internal static class TryMapEmitter
 
         sb.Append("            var __dst = new ").Append(decl.DestinationTypeFqn).Append("(\n");
 
-        var totalArgs = match.Mappings.Count + match.Constants.Count;
+        // A member without a conversion path is reported as ZAMP002 and left out, rather than
+        // emitted as an argument that cannot compile.
+        var mappings = match.Mappings
+            .Where(m => !ConversionResolver.HasNoConversionPath(m, owningClass, comp, out _))
+            .ToList();
+        var totalArgs = mappings.Count + match.Constants.Count;
         var idx = 0;
 
-        foreach (var m in match.Mappings)
+        foreach (var m in mappings)
         {
             string expr;
             if (m.IsFlattened)

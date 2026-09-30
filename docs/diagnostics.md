@@ -67,7 +67,9 @@ public static partial class M
 
 **Severity**: Error.
 
-**Trigger**: Source and destination property types are unrelated — no implicit/explicit cast, no single-arg constructor, no `static Parse(string)` overload, and no nested `[Map<,>]`/`[TryMap<,>]` declared on the host class.
+**Trigger**: Source and destination property types have no conversion the generator applies — no implicit conversion, no single-arg constructor, no `static Parse(string)` overload, and no nested `[Map<,>]`/`[TryMap<,>]` declared on the host class.
+
+Only implicit conversions are applied. An explicit conversion can throw or lose data, so it is reported as ZAMP002 too, and the message names it: `int?` to `int`, one enum to a different enum, or a narrowing numeric such as `long` to `int`. The generator leaves the member out of the generated mapping instead of emitting an argument that cannot compile. To fix it, change one of the types so the conversion is implicit, or write that mapping by hand.
 
 **Triggering code** (from `DiagnosticTests.ZAMP002_NoConversionPath_Reported`):
 

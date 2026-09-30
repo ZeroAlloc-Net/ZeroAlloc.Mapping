@@ -295,17 +295,20 @@ public sealed class MappingGenerator : IIncrementalGenerator
             // ZAMP002 — no conversion path on a matched pair.
             foreach (var m in match.Mappings)
             {
-                var conv = ConversionResolver.Resolve(m.SourceType, m.TargetType, comp);
-                if (conv.Kind == ConversionKind.None &&
-                    NestedMappingResolver.FindNestedMapper(cls, m.SourceType, m.TargetType) is null &&
-                    NestedMappingResolver.AsCollection(m.SourceType) is null)
+                if (ConversionResolver.HasNoConversionPath(m, cls, comp, out var conv))
                 {
+                    var from = m.SourceType.ToDisplayString();
+                    var to = m.TargetType.ToDisplayString();
+                    var reason = conv.Kind == ConversionKind.Explicit
+                        ? $"only an explicit conversion from '{from}' to '{to}' exists, which can throw or lose data, and the generator applies implicit conversions only"
+                        : "no implicit conversion, single-arg ctor, Parse, or nested mapper";
                     diagnostics.Add(DiagnosticInfo.Create(
                         Diagnostics.ZAMP002_NoConversionPath,
                         decl.Location,
                         m.TargetParamName,
-                        m.SourceType.ToDisplayString(),
-                        m.TargetType.ToDisplayString()));
+                        from,
+                        to,
+                        reason));
                 }
             }
 
