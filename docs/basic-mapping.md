@@ -9,6 +9,16 @@ sidebar_position: 2
 
 `[Map<TSrc, TDst>]` on a `static partial class` is the entire surface for the common case. The generator inspects the destination's primary constructor, walks the source's public properties, and emits one `Map(TSrc) → TDst` method whose body is a single `new TDst(...)` expression. Everything on this page is what happens between those two anchors — how properties pair, how the generator picks a conversion, and the four attributes you reach for when the defaults aren't enough.
 
+The mapper class can be generic, and it can be nested in another type. A nested mapper needs every containing type to be `partial` too, because the generated code reopens them. Otherwise the generator reports [ZAMP022](diagnostics.md#zamp022--nested-mapper-inside-a-containing-type-that-is-not-partial) and generates nothing for that mapper.
+
+```csharp
+public partial class Orders
+{
+    [Map<OrderRequest, Order>]
+    public static partial class Mappers { }
+}
+```
+
 ## By-Name Property Matching
 
 Default matching is by exact, case-sensitive property name. No configuration, no convention layer — the destination constructor parameter name has to equal the source property name.

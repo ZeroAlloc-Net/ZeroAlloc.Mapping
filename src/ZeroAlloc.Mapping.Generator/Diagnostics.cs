@@ -173,4 +173,12 @@ internal static class Diagnostics
         category: Category,
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
+
+    public static readonly DiagnosticDescriptor ZAMP022_ContainingTypeNotPartial = new(
+        id: "ZAMP022",
+        title: "Nested mapper inside a containing type that is not partial",
+        messageFormat: "Mapper '{0}' is not generated because its containing type '{1}' is not partial",
+        category: Category,
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true);
 }

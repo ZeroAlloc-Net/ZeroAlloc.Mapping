@@ -73,6 +73,18 @@ public sealed class MappingGenerator : IIncrementalGenerator
             return new MapperOutput(null, null, ToEquatable(diagnostics));
         }
 
+        // ZAMP022 — the generated code reopens every containing type, so each must be partial.
+        if (HostDeclarations.FirstNonPartialContainingType(type) is { } notPartial)
+        {
+            var declaration = type.Locations.FirstOrDefault(static l => l.IsInSource) ?? ctx.TargetNode.GetLocation();
+            diagnostics.Add(DiagnosticInfo.Create(
+                Diagnostics.ZAMP022_ContainingTypeNotPartial,
+                declaration,
+                type.ToDisplayString(),
+                notPartial.ToDisplayString()));
+            return new MapperOutput(null, null, ToEquatable(diagnostics));
+        }
+
         var cls = MapperDiscovery.DiscoverHost(type, attributes);
         if (cls is null) return null;
 

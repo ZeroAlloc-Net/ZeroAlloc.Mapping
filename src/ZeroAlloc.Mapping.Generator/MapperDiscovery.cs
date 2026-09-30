@@ -239,7 +239,6 @@ internal static class MapperDiscovery
         return new MapperClass(
             Namespace: type.ContainingNamespace.IsGlobalNamespace
                 ? "" : type.ContainingNamespace.ToDisplayString(),
-            ClassName: type.Name,
             Mappings: decls,
             CaseInsensitive: caseInsensitive,
             StrictSource: strictSource,

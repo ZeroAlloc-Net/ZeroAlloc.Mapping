@@ -17,7 +17,8 @@ internal static class MapEmitter
             sb.Append("namespace ").Append(cls.Namespace).Append(";\n\n");
         }
 
-        sb.Append("partial class ").Append(cls.ClassName).Append("\n{\n");
+        // A nested host is emitted inside partial declarations of its containing types.
+        var openedTypes = HostDeclarations.Open(sb, cls.TypeSymbol!);
 
         // B12: gen-time graph walk for DeepClone+CycleSafe declarations. Collects reachable
         // types per MapperClass and reports ZAMP021 for cycles through primary-ctor-only
@@ -132,7 +133,7 @@ internal static class MapEmitter
             }
         }
 
-        sb.Append("}\n");
+        for (var i = 0; i < openedTypes; i++) sb.Append("}\n");
         return (sb.ToString(), diagnostics);
     }
 
