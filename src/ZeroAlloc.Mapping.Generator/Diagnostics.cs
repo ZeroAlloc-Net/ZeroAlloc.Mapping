@@ -189,4 +189,12 @@ internal static class Diagnostics
         category: Category,
         defaultSeverity: DiagnosticSeverity.Warning,
         isEnabledByDefault: true);
+
+    public static readonly DiagnosticDescriptor ZAMP024_HostNameDiffersOnlyInCase = new(
+        id: "ZAMP024",
+        title: "Mapper name differs only in case from another mapper",
+        messageFormat: "Mapper '{0}' is not generated because its file name '{1}' differs only in case from that of mapper '{2}'",
+        category: Category,
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
 }

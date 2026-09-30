@@ -1,13 +1,13 @@
 ---
 id: diagnostics
 title: Diagnostics
-description: Compile-time diagnostics ZAMP001-ZAMP023 — every error and warning the generator can emit.
+description: Compile-time diagnostics ZAMP001-ZAMP024 — every error and warning the generator can emit.
 sidebar_position: 10
 ---
 
 # Diagnostics
 
-The generator emits twenty-three distinct compile-time diagnostics. Errors fail the build; Warnings are advisory and surface in the IDE. All use the `ZAMP` prefix and the `ZeroAlloc.Mapping` category, so a `<NoWarn>` or `<WarningsAsErrors>` rule that targets `ZAMP*` covers every diagnostic the generator produces.
+The generator emits twenty-four distinct compile-time diagnostics. Errors fail the build; Warnings are advisory and surface in the IDE. All use the `ZAMP` prefix and the `ZeroAlloc.Mapping` category, so a `<NoWarn>` or `<WarningsAsErrors>` rule that targets `ZAMP*` covers every diagnostic the generator produces.
 
 The source-of-truth for descriptors is `src/ZeroAlloc.Mapping.Generator/Diagnostics.cs`.
 
@@ -38,6 +38,7 @@ The source-of-truth for descriptors is `src/ZeroAlloc.Mapping.Generator/Diagnost
 | ZAMP021 | Error | `DeepClone + CycleSafe` reaches a primary-ctor-only type in a cycle |
 | ZAMP022 | Warning | Nested mapper inside a containing type that is not `partial` |
 | ZAMP023 | Warning | Mapping cannot be generated for its source and destination types |
+| ZAMP024 | Error | Mapper name differs only in case from another mapper |
 
 ## ZAMP001 — Required destination property has no source
 
@@ -615,6 +616,28 @@ public static partial class M { }
 ```
 
 **Fix**: Map to a concrete type with a public constructor. For a polymorphic destination, map each concrete type and add `[PolymorphicMap<,>]` over the base types; see [Polymorphic mapping](polymorphic.md).
+
+## ZAMP024 — Mapper name differs only in case from another mapper
+
+**Severity**: Error.
+
+**Message**: `Mapper 'App.m' is not generated because its file name 'App.m.g.cs' differs only in case from that of mapper 'App.M'`.
+
+**Trigger**: Each mapper is generated into a file named after its namespace, containing types and name. Roslyn compares those file names ignoring case, so two mappers whose qualified names differ only in case, such as `App.M` and `App.m`, or `App.M` and `app.M`, would need the same file. The mapper declared first, by file path and then position, is generated. Every later one gets ZAMP024 on its name and is not generated, so its `Map` and `TryMap` methods do not exist. Every other mapper in the project is generated as usual.
+
+Earlier versions threw in this case, reported CS8785, and generated no mapper in the project at all.
+
+**Triggering code** (from `CaseCollisionTests.HostsDifferingOnlyInCase_ReportZamp024_OnTheLaterHost_AndGenerateTheRest`):
+
+```csharp
+namespace App;
+public sealed record A(int X);
+public sealed record B(int X);
+[Map<A, B>] public static partial class M { }
+[Map<A, B>] public static partial class m { }
+```
+
+**Fix**: Rename one of the mappers, or move it to another namespace, so the qualified names differ in more than case.
 
 ## Release tracking
 

@@ -22,23 +22,53 @@ public sealed class MappingGenerator : IIncrementalGenerator
 
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
+        var providers = new System.Collections.Generic.List<IncrementalValuesProvider<MapperOutput>>();
         foreach (var (attributeFqn, trackingName) in HostAttributes)
         {
-            var hosts = context.SyntaxProvider
+            providers.Add(context.SyntaxProvider
                 .ForAttributeWithMetadataName(
                     attributeFqn,
                     predicate: static (node, _) => node is BaseTypeDeclarationSyntax or DelegateDeclarationSyntax,
                     transform: static (ctx, ct) => BuildOutput(ctx, ct))
                 .Where(static o => o is not null)
                 .Select(static (o, _) => o!)
-                .WithTrackingName(trackingName);
+                .WithTrackingName(trackingName));
+        }
 
-            context.RegisterSourceOutput(hosts, static (spc, output) =>
-            {
-                foreach (var d in output.Diagnostics) spc.ReportDiagnostic(d.ToDiagnostic());
-                if (output.HintName is not null && output.Source is not null)
-                    spc.AddSource(output.HintName, output.Source);
-            });
+        // ZAMP024 — the one check that needs every host at once. Only the hint names that must
+        // not be added reach the per-host outputs, so an edit that leaves them equal keeps every
+        // other host's output cached.
+        var allHosts = providers[0].Collect();
+        for (var i = 1; i < providers.Count; i++)
+        {
+            allHosts = allHosts
+                .Combine(providers[i].Collect())
+                .Select(static (pair, _) => pair.Left.AddRange(pair.Right));
+        }
+        var collisions = allHosts
+            .Select(static (hosts, _) => CaseCollisions.Find(hosts))
+            .WithTrackingName("CaseCollisions");
+
+        context.RegisterSourceOutput(collisions, static (spc, found) =>
+        {
+            foreach (var d in found.Diagnostics) spc.ReportDiagnostic(d.ToDiagnostic());
+        });
+
+        var skippedHintNames = collisions.Select(static (found, _) => found.SkippedHintNames);
+        foreach (var hosts in providers)
+        {
+            context.RegisterSourceOutput(
+                hosts.Combine(skippedHintNames),
+                static (spc, pair) =>
+                {
+                    var (output, skipped) = pair;
+                    foreach (var d in output.Diagnostics) spc.ReportDiagnostic(d.ToDiagnostic());
+                    if (output.HintName is not null && output.Source is not null &&
+                        !skipped.Values.Contains(output.HintName))
+                    {
+                        spc.AddSource(output.HintName, output.Source);
+                    }
+                });
         }
     }
 
@@ -70,7 +100,7 @@ public sealed class MappingGenerator : IIncrementalGenerator
                 Diagnostics.ZAMP006_NotStaticPartialClass,
                 declaration,
                 type.ToDisplayString()));
-            return new MapperOutput(null, null, ToEquatable(diagnostics));
+            return new MapperOutput(null, null, ToEquatable(diagnostics), null, null);
         }
 
         // ZAMP022 — the generated code reopens every containing type, so each must be partial.
@@ -82,19 +112,24 @@ public sealed class MappingGenerator : IIncrementalGenerator
                 declaration,
                 type.ToDisplayString(),
                 notPartial.ToDisplayString()));
-            return new MapperOutput(null, null, ToEquatable(diagnostics));
+            return new MapperOutput(null, null, ToEquatable(diagnostics), null, null);
         }
 
         var cls = MapperDiscovery.DiscoverHost(type, attributes, diagnostics);
         if (cls is null)
         {
-            return diagnostics.Count == 0 ? null : new MapperOutput(null, null, ToEquatable(diagnostics));
+            return diagnostics.Count == 0 ? null : new MapperOutput(null, null, ToEquatable(diagnostics), null, null);
         }
 
         ReportPerClassDiagnostics(diagnostics, cls, comp);
         var (src, mapEmitterDiagnostics) = MapEmitter.Emit(cls, comp);
         diagnostics.AddRange(mapEmitterDiagnostics);
-        return new MapperOutput(HintNames.ForHost(type), src, ToEquatable(diagnostics));
+        return new MapperOutput(
+            HintNames.ForHost(type),
+            src,
+            ToEquatable(diagnostics),
+            type.ToDisplayString(),
+            LocationInfo.From(type.Locations.FirstOrDefault(static l => l.IsInSource) ?? ctx.TargetNode.GetLocation()));
     }
 
     private static bool OwnsHost(GeneratorAttributeSyntaxContext ctx, INamedTypeSymbol type, MapperDiscovery.AttributeSymbols attributes)

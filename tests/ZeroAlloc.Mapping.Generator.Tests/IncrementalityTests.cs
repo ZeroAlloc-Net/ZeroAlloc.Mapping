@@ -48,6 +48,7 @@ public class IncrementalityTests
         "MapperHosts.ReverseTryMap",
         "MapperHosts.PolymorphicMap",
         "MapperHosts.PolymorphicTryMap",
+        "CaseCollisions",
     };
 
     [Fact]

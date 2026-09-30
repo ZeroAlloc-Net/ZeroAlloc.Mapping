@@ -46,7 +46,13 @@ internal sealed record LocationInfo(SyntaxTree Tree, TextSpan Span)
 /// What the generator produces for one mapper host: its source, when it has one, and the
 /// diagnostics about it. Holds no symbols, syntax nodes or compilation, so it compares by value.
 /// </summary>
+/// <remarks>
+/// <see cref="HostName"/> and <see cref="HostLocation"/> identify the host when its hint name
+/// differs only in case from another host's, which ZAMP024 reports.
+/// </remarks>
 internal sealed record MapperOutput(
     string? HintName,
     string? Source,
-    EquatableArray<DiagnosticInfo> Diagnostics);
+    EquatableArray<DiagnosticInfo> Diagnostics,
+    string? HostName,
+    LocationInfo? HostLocation);
