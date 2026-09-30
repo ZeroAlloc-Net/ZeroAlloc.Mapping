@@ -115,9 +115,8 @@ internal static class ProjectionExpressionEmitter
                 EmitCollectionInline(sb, m, srcExpr, nested, cls, comp, srcColl.Value.Element, dstColl.Value, indent);
                 return;
             }
-            // Fallback: collection without nested mapping — passthrough (identity element type).
-            sb.Append(srcExpr);
-            return;
+            // Without a nested mapping, the standard conversion below copies the collection,
+            // converting its elements.
         }
 
         // Case 2: nested object via a same-class [Map<,>] — inline transitively.
