@@ -599,14 +599,17 @@ public partial class Outer
 
 **Message**: `The mapping from 'App.A' to 'App.IB' is not generated because 'App.IB' has no public constructor`.
 
-**Trigger**: The generator cannot build a mapping for the two types the attribute names, so it generates no method for that mapping and reports ZAMP023 on the attribute. There are two causes:
+**Trigger**: The generator cannot build a mapping for the two types the attribute names, so it generates no method for that mapping and reports ZAMP023 on the attribute. There are three causes:
 
 - the destination has no public constructor, as for an interface, an abstract class or a class whose constructors are all private;
-- a type is not a class, struct, record or interface, as for an array: `[Map<int[], A>]`. This also applies to `[ReverseMap]`, `[ReverseTryMap]`, `[PolymorphicMap]` and `[PolymorphicTryMap]`.
+- a type is not a class, struct, record or interface, as for an array: `[Map<int[], A>]`;
+- both types are built-in types, which C# names with a keyword, such as `int`, `long`, `string`, `decimal` or `object`, or their nullable forms such as `int?`: `[Map<int, long>]`. Converting one to the other is a cast, not a mapping. The message reads `The mapping from 'int' to 'long' is not generated because both are built-in types, and a conversion between them is a cast, not a mapping`. A built-in type on one side only is an ordinary mapping, such as `decimal` to a record with a `Scale` property.
+
+The last two causes also apply to `[ReverseMap]`, `[ReverseTryMap]`, `[PolymorphicMap]` and `[PolymorphicTryMap]`.
 
 The other mappings of the mapper are still generated. A type that does not exist gets only the compiler's own error, not ZAMP023.
 
-Earlier versions skipped such a mapping with no diagnostic. They also skipped, without a diagnostic, every mapping over a nested type, a constructed generic such as `G<int>`, a built-in type written with its keyword such as `int`, or a type whose name is written with `@`. Those mappings are now generated.
+Earlier versions skipped such a mapping with no diagnostic. They also skipped, without a diagnostic, every mapping over a nested type, a constructed generic such as `G<int>`, a built-in type written with its keyword such as `int`, or a type whose name is written with `@`. Those mappings are now generated, except a mapping between two built-in types, which gets ZAMP023.
 
 **Triggering code** (from `TypeShapeTests.DestinationWithoutPublicConstructor_ReportsZamp023`):
 
@@ -617,7 +620,7 @@ public interface IB { int X { get; } }
 public static partial class M { }
 ```
 
-**Fix**: Map to a concrete type with a public constructor. For a polymorphic destination, map each concrete type and add `[PolymorphicMap<,>]` over the base types; see [Polymorphic mapping](polymorphic.md).
+**Fix**: Map to a concrete type with a public constructor. For a polymorphic destination, map each concrete type and add `[PolymorphicMap<,>]` over the base types; see [Polymorphic mapping](polymorphic.md). Between two built-in types, remove the attribute and write the cast.
 
 ## ZAMP024 — Mapper name differs only in case from another mapper
 
