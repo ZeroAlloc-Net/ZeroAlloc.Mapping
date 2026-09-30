@@ -1,13 +1,13 @@
 ---
 id: diagnostics
 title: Diagnostics
-description: Compile-time diagnostics ZAMP001-ZAMP022 — every error and warning the generator can emit.
+description: Compile-time diagnostics ZAMP001-ZAMP023 — every error and warning the generator can emit.
 sidebar_position: 10
 ---
 
 # Diagnostics
 
-The generator emits twenty-two distinct compile-time diagnostics. Errors fail the build; Warnings are advisory and surface in the IDE. All use the `ZAMP` prefix and the `ZeroAlloc.Mapping` category, so a `<NoWarn>` or `<WarningsAsErrors>` rule that targets `ZAMP*` covers every diagnostic the generator produces.
+The generator emits twenty-three distinct compile-time diagnostics. Errors fail the build; Warnings are advisory and surface in the IDE. All use the `ZAMP` prefix and the `ZeroAlloc.Mapping` category, so a `<NoWarn>` or `<WarningsAsErrors>` rule that targets `ZAMP*` covers every diagnostic the generator produces.
 
 The source-of-truth for descriptors is `src/ZeroAlloc.Mapping.Generator/Diagnostics.cs`.
 
@@ -37,6 +37,7 @@ The source-of-truth for descriptors is `src/ZeroAlloc.Mapping.Generator/Diagnost
 | ZAMP020 | Error | `[Map(DeepClone = true)]` walks a cyclic type graph without `CycleSafe = true` |
 | ZAMP021 | Error | `DeepClone + CycleSafe` reaches a primary-ctor-only type in a cycle |
 | ZAMP022 | Warning | Nested mapper inside a containing type that is not `partial` |
+| ZAMP023 | Warning | Mapping cannot be generated for its source and destination types |
 
 ## ZAMP001 — Required destination property has no source
 
@@ -588,6 +589,32 @@ public partial class Outer
     [Map<A, B>] public static partial class Mappers { }
 }
 ```
+
+## ZAMP023 — Mapping cannot be generated
+
+**Severity**: Warning.
+
+**Message**: `The mapping from 'App.A' to 'App.IB' is not generated because 'App.IB' has no public constructor`.
+
+**Trigger**: The generator cannot build a mapping for the two types the attribute names, so it generates no method for that mapping and reports ZAMP023 on the attribute. There are two causes:
+
+- the destination has no public constructor, as for an interface, an abstract class or a class whose constructors are all private;
+- a type is not a class, struct, record or interface, as for an array: `[Map<int[], A>]`. This also applies to `[ReverseMap]`, `[ReverseTryMap]`, `[PolymorphicMap]` and `[PolymorphicTryMap]`.
+
+The other mappings of the mapper are still generated. A type that does not exist gets only the compiler's own error, not ZAMP023.
+
+Earlier versions skipped such a mapping with no diagnostic. They also skipped, without a diagnostic, every mapping over a nested type, a constructed generic such as `G<int>`, a built-in type written with its keyword such as `int`, or a type whose name is written with `@`. Those mappings are now generated.
+
+**Triggering code** (from `TypeShapeTests.DestinationWithoutPublicConstructor_ReportsZamp023`):
+
+```csharp
+public sealed record A(int X);
+public interface IB { int X { get; } }
+[Map<A, IB>]
+public static partial class M { }
+```
+
+**Fix**: Map to a concrete type with a public constructor. For a polymorphic destination, map each concrete type and add `[PolymorphicMap<,>]` over the base types; see [Polymorphic mapping](polymorphic.md).
 
 ## Release tracking
 

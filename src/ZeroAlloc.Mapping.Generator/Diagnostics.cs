@@ -181,4 +181,12 @@ internal static class Diagnostics
         category: Category,
         defaultSeverity: DiagnosticSeverity.Warning,
         isEnabledByDefault: true);
+
+    public static readonly DiagnosticDescriptor ZAMP023_MappingNotGenerated = new(
+        id: "ZAMP023",
+        title: "Mapping cannot be generated",
+        messageFormat: "The mapping from '{0}' to '{1}' is not generated because {2}",
+        category: Category,
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true);
 }

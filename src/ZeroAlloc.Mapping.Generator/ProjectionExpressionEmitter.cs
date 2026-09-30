@@ -124,21 +124,16 @@ internal static class ProjectionExpressionEmitter
         var nestedObj = NestedMappingResolver.FindNestedMapper(cls, m.SourceType, m.TargetType);
         if (nestedObj is not null && nestedObj.Kind == MappingKind.Map)
         {
-            var nestedSrc = nestedObj.SourceTypeSymbol ?? m.SourceType as INamedTypeSymbol;
-            var nestedDst = nestedObj.DestinationTypeSymbol ?? m.TargetType as INamedTypeSymbol;
-            if (nestedSrc is not null && nestedDst is not null)
+            var nestedMatch = PropertyMatcher.Match(nestedObj.SourceTypeSymbol, nestedObj.DestinationTypeSymbol, nestedObj.UserPartialMethod, cls.CaseInsensitive);
+            if (nestedMatch is not null)
             {
-                var nestedMatch = PropertyMatcher.Match(nestedSrc, nestedDst, nestedObj.UserPartialMethod, cls.CaseInsensitive);
-                if (nestedMatch is not null)
-                {
-                    sb.Append("new ").Append(nestedObj.DestinationTypeFqn).Append("(\n");
-                    EmitInitializerBody(sb, nestedMatch, cls, comp, srcExpr, indent + "    ");
-                    sb.Append(indent).Append(')');
-                    return;
-                }
+                sb.Append("new ").Append(nestedObj.DestinationTypeFqn).Append("(\n");
+                EmitInitializerBody(sb, nestedMatch, cls, comp, srcExpr, indent + "    ");
+                sb.Append(indent).Append(')');
+                return;
             }
-            // Fallback to a Map(...) call if anything went wrong; will fail EF translation
-            // but at least compiles. ZAMP002/ZAMP001 would already have surfaced upstream.
+            // The nested destination has no public constructor, reported as ZAMP023. Fall back to
+            // a Map(...) call; it will not translate in EF, and ZAMP023 says why it is missing.
             sb.Append("Map(").Append(srcExpr).Append(')');
             return;
         }
@@ -165,9 +160,6 @@ internal static class ProjectionExpressionEmitter
         (ITypeSymbol Element, string CollectionKind) dstCollInfo,
         string indent)
     {
-        var nestedSrc = nested.SourceTypeSymbol ?? srcElem as INamedTypeSymbol;
-        var nestedDst = nested.DestinationTypeSymbol ?? dstCollInfo.Element as INamedTypeSymbol;
-
         var elemParam = "__e" + (indent.Length / 4);
         var dstElemFqn = nested.DestinationTypeFqn;
 
@@ -176,20 +168,18 @@ internal static class ProjectionExpressionEmitter
           .Append("(global::System.Linq.Enumerable.Select(")
           .Append(srcExpr).Append(", ").Append(elemParam).Append(" => ");
 
-        if (nestedSrc is not null && nestedDst is not null)
+        var nestedMatch = PropertyMatcher.Match(nested.SourceTypeSymbol, nested.DestinationTypeSymbol, nested.UserPartialMethod, cls.CaseInsensitive);
+        if (nestedMatch is not null)
         {
-            var nestedMatch = PropertyMatcher.Match(nestedSrc, nestedDst, nested.UserPartialMethod, cls.CaseInsensitive);
-            if (nestedMatch is not null)
-            {
-                sb.Append("new ").Append(dstElemFqn).Append("(\n");
-                EmitInitializerBody(sb, nestedMatch, cls, comp, elemParam, indent + "    ");
-                sb.Append(indent).Append(')');
-                sb.Append("))");
-                return;
-            }
+            sb.Append("new ").Append(dstElemFqn).Append("(\n");
+            EmitInitializerBody(sb, nestedMatch, cls, comp, elemParam, indent + "    ");
+            sb.Append(indent).Append(')');
+            sb.Append("))");
+            return;
         }
 
-        // Fallback: emit a Map call (won't translate in EF, but compiles).
+        // The element destination has no public constructor, reported as ZAMP023: emit a Map
+        // call, which will not translate in EF.
         sb.Append("Map(").Append(elemParam).Append(")))");
     }
 

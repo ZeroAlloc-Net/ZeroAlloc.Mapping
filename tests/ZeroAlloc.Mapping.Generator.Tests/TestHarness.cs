@@ -77,6 +77,9 @@ internal static class TestHarness
             typeof(MapValueAttribute),
             typeof(MapperIgnoreSourceAttribute),
             typeof(MapperIgnoreTargetAttribute),
+            // [TryMap] returns ZeroAlloc.Results.Result, and a projection is a LINQ expression.
+            typeof(ZeroAlloc.Results.Result<,>),
+            typeof(System.Linq.Expressions.Expression<>),
         };
         var explicitLocations = explicitTypes
             .Select(t => t.Assembly.Location)
