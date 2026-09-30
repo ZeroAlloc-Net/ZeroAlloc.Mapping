@@ -7,7 +7,12 @@ internal enum ConversionKind
 {
     None,
     Identity,
-    ImplicitOrExplicitCast,
+    ImplicitCast,
+    /// <summary>
+    /// Only an explicit conversion exists. It can throw or lose data, so it is not applied and
+    /// the member is reported as ZAMP002 instead of emitted.
+    /// </summary>
+    Explicit,
     SingleArgConstructor,
     Parse,
     EnumParse,
@@ -24,9 +29,9 @@ internal static class ConversionResolver
 
         var conv = ((CSharpCompilation)comp).ClassifyConversion(source, target);
         if (conv.IsImplicit && conv.Exists)
-            return new Conversion(ConversionKind.ImplicitOrExplicitCast);
-        if (conv.IsExplicit && conv.Exists)
-            return new Conversion(ConversionKind.ImplicitOrExplicitCast);
+            return new Conversion(ConversionKind.ImplicitCast);
+        // An explicit conversion is not applied, but a constructor or Parse below may still be.
+        var explicitOnly = conv.IsExplicit && conv.Exists;
 
         // Enum target via Enum.Parse<TEnum>(string)
         if (target.TypeKind == TypeKind.Enum && source.SpecialType == SpecialType.System_String)
@@ -63,7 +68,20 @@ internal static class ConversionResolver
                 return new Conversion(ConversionKind.Parse, parse);
         }
 
-        return new Conversion(ConversionKind.None);
+        return new Conversion(explicitOnly ? ConversionKind.Explicit : ConversionKind.None);
+    }
+
+    /// <summary>
+    /// True when a matched member has no conversion the generator applies: no implicit
+    /// conversion, constructor or Parse, no nested mapper and no collection mapping. Such a
+    /// member is reported as ZAMP002 and left out of the generated mapping.
+    /// </summary>
+    public static bool HasNoConversionPath(PropertyMapping m, MapperClass cls, Compilation comp, out Conversion conversion)
+    {
+        conversion = Resolve(m.SourceType, m.TargetType, comp);
+        return conversion.Kind is ConversionKind.None or ConversionKind.Explicit &&
+            NestedMappingResolver.FindNestedMapper(cls, m.SourceType, m.TargetType) is null &&
+            NestedMappingResolver.AsCollection(m.SourceType) is null;
     }
 
     public static string Apply(Conversion conv, string srcExpr, ITypeSymbol target, string? culture = null)
@@ -71,7 +89,7 @@ internal static class ConversionResolver
         return conv.Kind switch
         {
             ConversionKind.Identity => srcExpr,
-            ConversionKind.ImplicitOrExplicitCast => srcExpr,
+            ConversionKind.ImplicitCast => srcExpr,
             ConversionKind.SingleArgConstructor => $"new {target.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}({srcExpr})",
             ConversionKind.EnumParse => $"global::System.Enum.Parse<{target.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}>({srcExpr})",
             ConversionKind.Parse => HasFormatProvider(conv.Method)

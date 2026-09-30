@@ -17,7 +17,7 @@ internal static class Diagnostics
     public static readonly DiagnosticDescriptor ZAMP002_NoConversionPath = new(
         id: "ZAMP002",
         title: "No conversion path between source and destination property",
-        messageFormat: "Property '{0}' has no conversion path from '{1}' to '{2}' (no implicit/explicit cast, single-arg ctor, Parse, or nested mapper)",
+        messageFormat: "Property '{0}' has no conversion path from '{1}' to '{2}' ({3})",
         category: Category,
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
