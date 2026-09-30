@@ -1,6 +1,8 @@
 namespace ZeroAlloc.Mapping.Tests.Attributes;
 
-public class AttributeTests
+// Partial because SampleMappings below is a mapper: the generator reopens its containing type,
+// and ZAMP022 reports a nested mapper whose containing type is not partial.
+public partial class AttributeTests
 {
     [Fact]
     public void MapAttribute_AllowsMultiple_OnSameClass()

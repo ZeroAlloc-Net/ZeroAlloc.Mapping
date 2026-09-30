@@ -13,7 +13,6 @@ internal sealed record HookMethod(
 
 internal sealed record MapperClass(
     string Namespace,
-    string ClassName,
     System.Collections.Generic.IReadOnlyList<MappingDecl> Mappings,
     bool CaseInsensitive = false,
     bool StrictSource = false,

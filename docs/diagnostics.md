@@ -1,13 +1,13 @@
 ---
 id: diagnostics
 title: Diagnostics
-description: Compile-time diagnostics ZAMP001-ZAMP021 — every error and warning the generator can emit.
+description: Compile-time diagnostics ZAMP001-ZAMP022 — every error and warning the generator can emit.
 sidebar_position: 10
 ---
 
 # Diagnostics
 
-The generator emits twenty-one distinct compile-time diagnostics. Errors fail the build; Warnings are advisory and surface in the IDE. All use the `ZAMP` prefix and the `ZeroAlloc.Mapping` category, so a `<NoWarn>` or `<WarningsAsErrors>` rule that targets `ZAMP*` covers every diagnostic the generator produces.
+The generator emits twenty-two distinct compile-time diagnostics. Errors fail the build; Warnings are advisory and surface in the IDE. All use the `ZAMP` prefix and the `ZeroAlloc.Mapping` category, so a `<NoWarn>` or `<WarningsAsErrors>` rule that targets `ZAMP*` covers every diagnostic the generator produces.
 
 The source-of-truth for descriptors is `src/ZeroAlloc.Mapping.Generator/Diagnostics.cs`.
 
@@ -36,6 +36,7 @@ The source-of-truth for descriptors is `src/ZeroAlloc.Mapping.Generator/Diagnost
 | ZAMP019 | Error | `[Map(DeepClone = true)]` reaches an uncloneable type |
 | ZAMP020 | Error | `[Map(DeepClone = true)]` walks a cyclic type graph without `CycleSafe = true` |
 | ZAMP021 | Error | `DeepClone + CycleSafe` reaches a primary-ctor-only type in a cycle |
+| ZAMP022 | Warning | Nested mapper inside a containing type that is not `partial` |
 
 ## ZAMP001 — Required destination property has no source
 
@@ -556,6 +557,36 @@ public sealed record Box
 }
 [Map<Box, Box>(DeepClone = true, CycleSafe = true)]
 public static partial class M { }
+```
+
+## ZAMP022 — Nested mapper inside a containing type that is not `partial`
+
+**Severity**: Warning.
+
+**Message**: `Mapper 'App.Outer.Mappers' is not generated because its containing type 'App.Outer' is not partial`.
+
+**Trigger**: A mapper nested in another type is emitted inside partial declarations of every containing type, so each of them must be `partial`. When one is not, the generator reports ZAMP022 on the mapper and generates nothing for it. The warning names the outermost containing type that is not `partial`.
+
+The mapper's `Map` and `TryMap` methods then do not exist, so any call to them fails with CS0117. Earlier versions generated such a mapper into a new top-level class with its simple name, which left the nested mapper just as empty.
+
+**Triggering code** (from `NestedHostTests.HostInANonPartialContainingType_ReportsZamp022_AndGeneratesNothing`):
+
+```csharp
+public sealed record A(int X);
+public sealed record B(int X);
+public class Outer
+{
+    [Map<A, B>] public static partial class Mappers { }
+}
+```
+
+**Fix**: Make every containing type `partial`, or move the mapper to the top level of a namespace.
+
+```csharp
+public partial class Outer
+{
+    [Map<A, B>] public static partial class Mappers { }
+}
 ```
 
 ## Release tracking
