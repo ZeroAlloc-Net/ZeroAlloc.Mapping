@@ -37,6 +37,33 @@ internal static class TestHarness
         return driver.GetRunResult().Results.SelectMany(r => r.Diagnostics).ToList();
     }
 
+    /// <summary>
+    /// Runs the generator and compiles its output with the source, keeping the hint names, the
+    /// generator's own diagnostics, such as CS8785 when it throws, and the compile errors.
+    /// </summary>
+    public static GeneratorRun RunGeneratorAndCompile(string source)
+    {
+        var compilation = CSharpCompilation.Create(
+            "TestCompilation",
+            new[] { CSharpSyntaxTree.ParseText(source) },
+            ReferenceAssemblies(),
+            new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+
+        var driver = CSharpGeneratorDriver.Create(new MappingGenerator())
+            .RunGeneratorsAndUpdateCompilation(compilation, out var output, out var generatorDiagnostics);
+        var result = driver.GetRunResult();
+
+        return new GeneratorRun(
+            result.Results.SelectMany(r => r.GeneratedSources).Select(s => s.HintName).ToList(),
+            generatorDiagnostics.ToList(),
+            output.GetDiagnostics().Where(d => d.Severity == DiagnosticSeverity.Error).ToList());
+    }
+
+    internal sealed record GeneratorRun(
+        IReadOnlyList<string> HintNames,
+        IReadOnlyList<Diagnostic> GeneratorDiagnostics,
+        IReadOnlyList<Diagnostic> Errors);
+
     internal static IEnumerable<MetadataReference> References() => ReferenceAssemblies();
 
     private static IEnumerable<MetadataReference> ReferenceAssemblies()

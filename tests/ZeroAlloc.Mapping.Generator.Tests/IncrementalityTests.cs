@@ -173,7 +173,7 @@ public class IncrementalityTests
         var output = TestHarness.RunGenerator(source);
         var diagnostics = TestHarness.RunDiagnostics(source);
 
-        Assert.Single(output.Split('\n'), l => l == "// M.g.cs");
+        Assert.Single(output.Split('\n'), l => l == "// App.M.g.cs");
         Assert.DoesNotContain("NotStatic", output, StringComparison.Ordinal);
         Assert.Single(diagnostics, d => d.Id == "ZAMP006");
     }
