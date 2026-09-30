@@ -216,7 +216,9 @@ internal static class MapperDiscovery
     /// A type the compiler could not bind, or a type parameter, which an attribute cannot take,
     /// already has a compiler error, so no mapping is added and nothing more is reported. Any
     /// other type that is not a class, struct, record or interface, such as an array, gets ZAMP023:
-    /// the generator has no properties or constructor to map it by.
+    /// the generator has no properties or constructor to map it by. So does a pair of built-in
+    /// types, such as <c>int</c> and <c>long</c>: converting one to the other is a cast, and
+    /// matching their members would only produce a default value.
     /// </remarks>
     private static (INamedTypeSymbol Source, INamedTypeSymbol Destination)? MappedTypes(
         AttributeData attr,
@@ -228,7 +230,17 @@ internal static class MapperDiscovery
         if (IsCompilerError(typeArgs[0]) || IsCompilerError(typeArgs[1])) return null;
 
         if (typeArgs[0] is INamedTypeSymbol src && typeArgs[1] is INamedTypeSymbol dst)
-            return (src, dst);
+        {
+            if (!IsBuiltIn(src) || !IsBuiltIn(dst)) return (src, dst);
+
+            diagnostics.Add(DiagnosticInfo.Create(
+                Diagnostics.ZAMP023_MappingNotGenerated,
+                location,
+                src.ToDisplayString(),
+                dst.ToDisplayString(),
+                "both are built-in types, and a conversion between them is a cast, not a mapping"));
+            return null;
+        }
 
         var unsupported = typeArgs[0] is INamedTypeSymbol ? typeArgs[1] : typeArgs[0];
         diagnostics.Add(DiagnosticInfo.Create(
@@ -238,6 +250,24 @@ internal static class MapperDiscovery
             typeArgs[1].ToDisplayString(),
             $"'{unsupported.ToDisplayString()}' is not a class, struct, record or interface"));
         return null;
+    }
+
+    /// <summary>
+    /// A type C# names with a keyword, such as <c>int</c>, <c>string</c> or <c>object</c>, or a
+    /// nullable one, such as <c>int?</c>.
+    /// </summary>
+    private static bool IsBuiltIn(INamedTypeSymbol type)
+    {
+        if (type.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T)
+            return type.TypeArguments[0] is INamedTypeSymbol underlying && IsBuiltIn(underlying);
+
+        return type.SpecialType is
+            SpecialType.System_Object or SpecialType.System_String or SpecialType.System_Boolean or
+            SpecialType.System_Char or SpecialType.System_SByte or SpecialType.System_Byte or
+            SpecialType.System_Int16 or SpecialType.System_UInt16 or SpecialType.System_Int32 or
+            SpecialType.System_UInt32 or SpecialType.System_Int64 or SpecialType.System_UInt64 or
+            SpecialType.System_IntPtr or SpecialType.System_UIntPtr or SpecialType.System_Single or
+            SpecialType.System_Double or SpecialType.System_Decimal;
     }
 
     private static bool IsCompilerError(ITypeSymbol type) =>
