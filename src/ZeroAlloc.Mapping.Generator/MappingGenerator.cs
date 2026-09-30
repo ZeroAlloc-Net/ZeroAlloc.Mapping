@@ -79,7 +79,7 @@ public sealed class MappingGenerator : IIncrementalGenerator
         ReportPerClassDiagnostics(diagnostics, cls, comp);
         var (src, mapEmitterDiagnostics) = MapEmitter.Emit(cls, comp);
         diagnostics.AddRange(mapEmitterDiagnostics);
-        return new MapperOutput($"{cls.ClassName}.g.cs", src, ToEquatable(diagnostics));
+        return new MapperOutput(HintNames.ForHost(type), src, ToEquatable(diagnostics));
     }
 
     private static bool OwnsHost(GeneratorAttributeSyntaxContext ctx, INamedTypeSymbol type, MapperDiscovery.AttributeSymbols attributes)
