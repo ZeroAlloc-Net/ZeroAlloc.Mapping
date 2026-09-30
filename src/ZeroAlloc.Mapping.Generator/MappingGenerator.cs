@@ -85,8 +85,11 @@ public sealed class MappingGenerator : IIncrementalGenerator
             return new MapperOutput(null, null, ToEquatable(diagnostics));
         }
 
-        var cls = MapperDiscovery.DiscoverHost(type, attributes);
-        if (cls is null) return null;
+        var cls = MapperDiscovery.DiscoverHost(type, attributes, diagnostics);
+        if (cls is null)
+        {
+            return diagnostics.Count == 0 ? null : new MapperOutput(null, null, ToEquatable(diagnostics));
+        }
 
         ReportPerClassDiagnostics(diagnostics, cls, comp);
         var (src, mapEmitterDiagnostics) = MapEmitter.Emit(cls, comp);
@@ -160,7 +163,7 @@ public sealed class MappingGenerator : IIncrementalGenerator
             // deferred — same caveat as ZAMP017's transitive note above.
             if (decl.CycleSafe)
             {
-                foreach (var (nestedSrcFqn, nestedDstFqn) in WalkNestedMappingFqns(decl, cls, comp))
+                foreach (var (nestedSrcFqn, nestedDstFqn) in WalkNestedMappingFqns(decl, cls))
                 {
                     if (!IsCycleSafe(nestedSrcFqn, nestedDstFqn, cls))
                     {
@@ -245,9 +248,8 @@ public sealed class MappingGenerator : IIncrementalGenerator
                 }
             }
 
-            var src = comp.GetTypeByMetadataName(StripGlobal(decl.SourceTypeFqn));
-            var dst = comp.GetTypeByMetadataName(StripGlobal(decl.DestinationTypeFqn));
-            if (src is null || dst is null) continue;
+            var src = decl.SourceTypeSymbol;
+            var dst = decl.DestinationTypeSymbol;
 
             // ZAMP009 — [ReverseMap]/[ReverseTryMap] desugared decls cannot be auto-reversed
             // when the user-declared partial carries information-asymmetric customisations.
@@ -269,8 +271,19 @@ public sealed class MappingGenerator : IIncrementalGenerator
                 }
             }
 
+            // ZAMP023 — no public constructor to build the destination with, so MapEmitter
+            // generates no method for this mapping and the checks below have nothing to check.
             var match = PropertyMatcher.Match(src, dst, decl.UserPartialMethod, cls.CaseInsensitive);
-            if (match is null) continue;
+            if (match is null)
+            {
+                diagnostics.Add(DiagnosticInfo.Create(
+                    Diagnostics.ZAMP023_MappingNotGenerated,
+                    decl.Location,
+                    src.ToDisplayString(),
+                    dst.ToDisplayString(),
+                    $"'{dst.ToDisplayString()}' has no public constructor"));
+                continue;
+            }
 
             // ZAMP011 — under [CaseInsensitiveMapping], source has two properties whose names
             // collide case-insensitively and the destination has a constructor param matching them.
@@ -480,19 +493,16 @@ public sealed class MappingGenerator : IIncrementalGenerator
             }
 
             // ZAMP008 — multiple non-copy public ctors with equal arity.
-            if (dst is INamedTypeSymbol nt)
+            var nonCopy = dst.InstanceConstructors
+                .Where(c => c.DeclaredAccessibility == Accessibility.Public)
+                .Where(c => !(c.Parameters.Length == 1 && SymbolEqualityComparer.Default.Equals(c.Parameters[0].Type, dst)))
+                .ToList();
+            var maxArity = nonCopy.Select(c => c.Parameters.Length).DefaultIfEmpty(0).Max();
+            if (nonCopy.Count(c => c.Parameters.Length == maxArity) > 1)
             {
-                var nonCopy = nt.InstanceConstructors
-                    .Where(c => c.DeclaredAccessibility == Accessibility.Public)
-                    .Where(c => !(c.Parameters.Length == 1 && SymbolEqualityComparer.Default.Equals(c.Parameters[0].Type, nt)))
-                    .ToList();
-                var maxArity = nonCopy.Select(c => c.Parameters.Length).DefaultIfEmpty(0).Max();
-                if (nonCopy.Count(c => c.Parameters.Length == maxArity) > 1)
-                {
-                    diagnostics.Add(DiagnosticInfo.Create(
-                        Diagnostics.ZAMP008_AmbiguousConstructor,
-                        decl.Location, dst.ToDisplayString()));
-                }
+                diagnostics.Add(DiagnosticInfo.Create(
+                    Diagnostics.ZAMP008_AmbiguousConstructor,
+                    decl.Location, dst.ToDisplayString()));
             }
         }
 
@@ -517,7 +527,6 @@ public sealed class MappingGenerator : IIncrementalGenerator
                 var assignable = new System.Collections.Generic.List<MappingDecl>();
                 foreach (var decl in cls.Mappings)
                 {
-                    if (decl.SourceTypeSymbol is null || decl.DestinationTypeSymbol is null) continue;
                     if (!MapEmitter.IsAssignableTo(decl.SourceTypeSymbol, poly.BaseTypeSymbol)) continue;
                     if (!MapEmitter.IsAssignableTo(decl.DestinationTypeSymbol, poly.BaseDestinationTypeSymbol)) continue;
                     assignable.Add(decl);
@@ -554,22 +563,16 @@ public sealed class MappingGenerator : IIncrementalGenerator
         }
     }
 
-    private static string StripGlobal(string fqn) =>
-        fqn.StartsWith("global::", System.StringComparison.Ordinal) ? fqn.Substring(8) : fqn;
-
     /// <summary>
     /// Enumerates the (sourceFqn, destinationFqn) pairs of every nested mapping reached
     /// from <paramref name="decl"/> via its declared property graph — used by ZAMP018
     /// (CycleSafe transitivity) to verify each hop also opts in to the tracker.
     /// </summary>
     private static System.Collections.Generic.IEnumerable<(string SrcFqn, string DstFqn)>
-        WalkNestedMappingFqns(MappingDecl decl, MapperClass cls, Compilation comp)
+        WalkNestedMappingFqns(MappingDecl decl, MapperClass cls)
     {
-        var src = comp.GetTypeByMetadataName(StripGlobal(decl.SourceTypeFqn));
-        var dst = comp.GetTypeByMetadataName(StripGlobal(decl.DestinationTypeFqn));
-        if (src is null || dst is null) yield break;
-
-        var match = PropertyMatcher.Match(src, dst, decl.UserPartialMethod, cls.CaseInsensitive);
+        // No match means no public constructor, which ReportPerClassDiagnostics reports as ZAMP023.
+        var match = PropertyMatcher.Match(decl.SourceTypeSymbol, decl.DestinationTypeSymbol, decl.UserPartialMethod, cls.CaseInsensitive);
         if (match is null) yield break;
 
         foreach (var m in match.Mappings)

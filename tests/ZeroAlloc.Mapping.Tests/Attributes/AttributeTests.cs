@@ -7,7 +7,7 @@ public partial class AttributeTests
     [Fact]
     public void MapAttribute_AllowsMultiple_OnSameClass()
     {
-        var attrs = typeof(SampleMappings).GetCustomAttributes(typeof(MapAttribute<int, string>), inherit: false);
+        var attrs = typeof(SampleMappings).GetCustomAttributes(typeof(MapAttribute<SampleSource, SampleDestination>), inherit: false);
         Assert.Single(attrs);
     }
 
@@ -138,7 +138,10 @@ public partial class AttributeTests
         Assert.False(usage.AllowMultiple);
     }
 
-    [Map<int, string>]
-    [TryMap<long, decimal>]
+    public sealed record SampleSource(int Id);
+    public sealed record SampleDestination(int Id);
+
+    [Map<SampleSource, SampleDestination>]
+    [TryMap<SampleSource, SampleDestination>]
     private static partial class SampleMappings { }
 }

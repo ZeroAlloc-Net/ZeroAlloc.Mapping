@@ -11,6 +11,8 @@ sidebar_position: 2
 
 The mapper class can be generic, and it can be nested in another type. A nested mapper needs every containing type to be `partial` too, because the generated code reopens them. Otherwise the generator reports [ZAMP022](diagnostics.md#zamp022--nested-mapper-inside-a-containing-type-that-is-not-partial) and generates nothing for that mapper.
 
+The source and destination can be any class, struct or record, including a nested type such as `Dto.Order`, a constructed generic such as `Page<Order>`, and a type whose name needs `@`. A mapping that cannot be generated, for example to an interface, reports [ZAMP023](diagnostics.md#zamp023--mapping-cannot-be-generated).
+
 ```csharp
 public partial class Orders
 {

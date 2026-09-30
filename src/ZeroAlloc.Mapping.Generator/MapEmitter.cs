@@ -31,12 +31,10 @@ internal static class MapEmitter
 
         foreach (var decl in cls.Mappings)
         {
-            var src = comp.GetTypeByMetadataName(StripGlobal(decl.SourceTypeFqn))
-                      ?? FindType(comp, decl.SourceTypeFqn);
-            var dst = comp.GetTypeByMetadataName(StripGlobal(decl.DestinationTypeFqn))
-                      ?? FindType(comp, decl.DestinationTypeFqn);
-            if (src is null || dst is null) continue;
+            var src = decl.SourceTypeSymbol;
+            var dst = decl.DestinationTypeSymbol;
 
+            // No match means the destination has no public constructor, reported as ZAMP023.
             var match = PropertyMatcher.Match(src, dst, decl.UserPartialMethod, cls.CaseInsensitive);
             if (match is null) continue;
 
@@ -143,7 +141,6 @@ internal static class MapEmitter
         foreach (var decl in cls.Mappings)
         {
             if (decl.Kind != poly.Kind) continue;
-            if (decl.SourceTypeSymbol is null || decl.DestinationTypeSymbol is null) continue;
             if (!IsAssignableTo(decl.SourceTypeSymbol, poly.BaseTypeSymbol)) continue;
             if (!IsAssignableTo(decl.DestinationTypeSymbol, poly.BaseDestinationTypeSymbol)) continue;
             result.Add(decl);
@@ -648,21 +645,4 @@ internal static class MapEmitter
         char c => "'" + c + "'",
         _ => value.ToString() ?? "null",
     };
-
-    private static string StripGlobal(string fqn) =>
-        fqn.StartsWith("global::", System.StringComparison.Ordinal) ? fqn.Substring(8) : fqn;
-
-    private static INamedTypeSymbol? FindType(Compilation comp, string fqn)
-    {
-        var stripped = StripGlobal(fqn);
-        foreach (var assembly in comp.References
-                     .Select(r => comp.GetAssemblyOrModuleSymbol(r))
-                     .OfType<IAssemblySymbol>()
-                     .Concat(new[] { comp.Assembly }))
-        {
-            var t = assembly.GetTypeByMetadataName(stripped);
-            if (t is not null) return t;
-        }
-        return null;
-    }
 }

@@ -40,11 +40,8 @@ internal static class CycleSafeDeepCloneEmitter
         {
             if (!(decl.DeepClone && decl.CycleSafe)) continue;
 
-            var dst = comp.GetTypeByMetadataName(StripGlobal(decl.DestinationTypeFqn));
-            if (dst is null) continue;
-
             var visiting = new HashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default);
-            WalkType(dst, cls, comp, collected, visiting, decl, diagnosticSink);
+            WalkType(decl.DestinationTypeSymbol, cls, comp, collected, visiting, decl, diagnosticSink);
         }
 
         return collected;
@@ -132,9 +129,6 @@ internal static class CycleSafeDeepCloneEmitter
             visiting.Remove(type);
         }
     }
-
-    private static string StripGlobal(string fqn) =>
-        fqn.StartsWith("global::", System.StringComparison.Ordinal) ? fqn.Substring(8) : fqn;
 
     /// <summary>
     /// Emits one <c>private static T __CloneCycleSafe_T(T src, IDictionary&lt;object, object&gt; tracker)</c>

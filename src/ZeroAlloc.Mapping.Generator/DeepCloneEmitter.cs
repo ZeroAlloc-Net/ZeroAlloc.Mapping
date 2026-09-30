@@ -332,8 +332,6 @@ internal static class DeepCloneEmitter
     public static IEnumerable<ReachableType> WalkReachableReferenceTypes(
         MappingDecl decl, MapperClass cls, Compilation comp)
     {
-        if (decl.SourceTypeSymbol is null || decl.DestinationTypeSymbol is null) yield break;
-
         var stack = new Stack<(INamedTypeSymbol Src, INamedTypeSymbol Dst, ImmutableList<string> Path)>();
         var visitedKeys = new HashSet<string>(System.StringComparer.Ordinal);
 

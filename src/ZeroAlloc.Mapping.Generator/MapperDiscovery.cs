@@ -47,8 +47,13 @@ internal static class MapperDiscovery
 
     /// <summary>
     /// Reads the mappings a static partial class declares. Returns null when it declares none.
+    /// A mapping attribute over a type no mapping can be built for adds ZAMP023 to
+    /// <paramref name="diagnostics"/> and no mapping.
     /// </summary>
-    public static MapperClass? DiscoverHost(INamedTypeSymbol type, AttributeSymbols attributes)
+    public static MapperClass? DiscoverHost(
+        INamedTypeSymbol type,
+        AttributeSymbols attributes,
+        System.Collections.Generic.ICollection<DiagnosticInfo> diagnostics)
     {
         var mapAttr = attributes.Map;
         var tryMapAttr = attributes.TryMap;
@@ -64,89 +69,45 @@ internal static class MapperDiscovery
             var orig = attr.AttributeClass?.OriginalDefinition;
             if (orig is null) continue;
 
-            if (polymorphicMapAttr is not null && SymbolEqualityComparer.Default.Equals(orig, polymorphicMapAttr))
+            MappingKind? polymorphicKind =
+                polymorphicMapAttr is not null && SymbolEqualityComparer.Default.Equals(orig, polymorphicMapAttr) ? MappingKind.Map
+                : polymorphicTryMapAttr is not null && SymbolEqualityComparer.Default.Equals(orig, polymorphicTryMapAttr) ? MappingKind.TryMap
+                : null;
+            if (polymorphicKind is { } pKind)
             {
-                var polyArgs = attr.AttributeClass!.TypeArguments;
-                if (polyArgs.Length != 2) continue;
-                if (polyArgs[0] is INamedTypeSymbol pBase && polyArgs[1] is INamedTypeSymbol pBaseDst)
+                var location = AttributeLocation(attr, type.Locations[0]);
+                if (MappedTypes(attr, location, diagnostics) is { } poly)
                 {
-                    polymorphics.Add(new PolymorphicDecl(
-                        BaseTypeFqn: pBase.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
-                        BaseDestinationTypeFqn: pBaseDst.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
-                        Kind: MappingKind.Map,
-                        Location: AttributeLocation(attr, type.Locations[0]),
-                        BaseTypeSymbol: pBase,
-                        BaseDestinationTypeSymbol: pBaseDst));
-                }
-                continue;
-            }
-            if (polymorphicTryMapAttr is not null && SymbolEqualityComparer.Default.Equals(orig, polymorphicTryMapAttr))
-            {
-                var polyArgs = attr.AttributeClass!.TypeArguments;
-                if (polyArgs.Length != 2) continue;
-                if (polyArgs[0] is INamedTypeSymbol pBase && polyArgs[1] is INamedTypeSymbol pBaseDst)
-                {
-                    polymorphics.Add(new PolymorphicDecl(
-                        BaseTypeFqn: pBase.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
-                        BaseDestinationTypeFqn: pBaseDst.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
-                        Kind: MappingKind.TryMap,
-                        Location: AttributeLocation(attr, type.Locations[0]),
-                        BaseTypeSymbol: pBase,
-                        BaseDestinationTypeSymbol: pBaseDst));
+                    polymorphics.Add(new PolymorphicDecl(poly.Source, poly.Destination, pKind, location));
                 }
                 continue;
             }
 
-            if (reverseMapAttr is not null && SymbolEqualityComparer.Default.Equals(orig, reverseMapAttr))
+            MappingKind? reverseKind =
+                reverseMapAttr is not null && SymbolEqualityComparer.Default.Equals(orig, reverseMapAttr) ? MappingKind.Map
+                : reverseTryMapAttr is not null && SymbolEqualityComparer.Default.Equals(orig, reverseTryMapAttr) ? MappingKind.TryMap
+                : null;
+            if (reverseKind is { } rKind)
             {
-                var reverseTypeArgs = attr.AttributeClass!.TypeArguments;
-                if (reverseTypeArgs.Length != 2) continue;
-                var fwdPartial = FindUserPartialMethod(type, MappingKind.Map, reverseTypeArgs[0], reverseTypeArgs[1]);
-                var revPartial = FindUserPartialMethod(type, MappingKind.Map, reverseTypeArgs[1], reverseTypeArgs[0]);
-                decls.Add(new MappingDecl(
-                    SourceTypeFqn: reverseTypeArgs[0].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
-                    DestinationTypeFqn: reverseTypeArgs[1].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
-                    Kind: MappingKind.Map,
-                    Location: AttributeLocation(attr, type.Locations[0]),
-                    UserPartialMethod: fwdPartial,
-                    FromReverse: true,
-                    SourceTypeSymbol: reverseTypeArgs[0] as INamedTypeSymbol,
-                    DestinationTypeSymbol: reverseTypeArgs[1] as INamedTypeSymbol));
-                decls.Add(new MappingDecl(
-                    SourceTypeFqn: reverseTypeArgs[1].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
-                    DestinationTypeFqn: reverseTypeArgs[0].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
-                    Kind: MappingKind.Map,
-                    Location: AttributeLocation(attr, type.Locations[0]),
-                    UserPartialMethod: revPartial,
-                    FromReverse: true,
-                    SourceTypeSymbol: reverseTypeArgs[1] as INamedTypeSymbol,
-                    DestinationTypeSymbol: reverseTypeArgs[0] as INamedTypeSymbol));
-                continue;
-            }
-            if (reverseTryMapAttr is not null && SymbolEqualityComparer.Default.Equals(orig, reverseTryMapAttr))
-            {
-                var reverseTypeArgs = attr.AttributeClass!.TypeArguments;
-                if (reverseTypeArgs.Length != 2) continue;
-                var fwdPartial = FindUserPartialMethod(type, MappingKind.TryMap, reverseTypeArgs[0], reverseTypeArgs[1]);
-                var revPartial = FindUserPartialMethod(type, MappingKind.TryMap, reverseTypeArgs[1], reverseTypeArgs[0]);
-                decls.Add(new MappingDecl(
-                    SourceTypeFqn: reverseTypeArgs[0].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
-                    DestinationTypeFqn: reverseTypeArgs[1].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
-                    Kind: MappingKind.TryMap,
-                    Location: AttributeLocation(attr, type.Locations[0]),
-                    UserPartialMethod: fwdPartial,
-                    FromReverse: true,
-                    SourceTypeSymbol: reverseTypeArgs[0] as INamedTypeSymbol,
-                    DestinationTypeSymbol: reverseTypeArgs[1] as INamedTypeSymbol));
-                decls.Add(new MappingDecl(
-                    SourceTypeFqn: reverseTypeArgs[1].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
-                    DestinationTypeFqn: reverseTypeArgs[0].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
-                    Kind: MappingKind.TryMap,
-                    Location: AttributeLocation(attr, type.Locations[0]),
-                    UserPartialMethod: revPartial,
-                    FromReverse: true,
-                    SourceTypeSymbol: reverseTypeArgs[1] as INamedTypeSymbol,
-                    DestinationTypeSymbol: reverseTypeArgs[0] as INamedTypeSymbol));
+                var location = AttributeLocation(attr, type.Locations[0]);
+                if (MappedTypes(attr, location, diagnostics) is { } pair)
+                {
+                    var (a, b) = pair;
+                    decls.Add(new MappingDecl(
+                        SourceTypeSymbol: a,
+                        DestinationTypeSymbol: b,
+                        Kind: rKind,
+                        Location: location,
+                        UserPartialMethod: FindUserPartialMethod(type, rKind, a, b),
+                        FromReverse: true));
+                    decls.Add(new MappingDecl(
+                        SourceTypeSymbol: b,
+                        DestinationTypeSymbol: a,
+                        Kind: rKind,
+                        Location: location,
+                        UserPartialMethod: FindUserPartialMethod(type, rKind, b, a),
+                        FromReverse: true));
+                }
                 continue;
             }
 
@@ -158,13 +119,14 @@ internal static class MapperDiscovery
             else
                 continue;
 
-            var typeArgs = attr.AttributeClass!.TypeArguments;
-            if (typeArgs.Length != 2) continue;
+            var mapLocation = AttributeLocation(attr, type.Locations[0]);
+            if (MappedTypes(attr, mapLocation, diagnostics) is not { } types) continue;
+            var (src, dst) = types;
 
-            var userPartial = FindUserPartialMethod(type, kind, typeArgs[0], typeArgs[1]);
+            var userPartial = FindUserPartialMethod(type, kind, src, dst);
 
             var updateInPlace = kind == MappingKind.Map
-                ? FindUpdateInPlacePartial(type, typeArgs[0], typeArgs[1])
+                ? FindUpdateInPlacePartial(type, src, dst)
                 : null;
 
             var projection = kind == MappingKind.Map && attr.NamedArguments
@@ -178,17 +140,15 @@ internal static class MapperDiscovery
                 .Value.Value is true;
 
             decls.Add(new MappingDecl(
-                SourceTypeFqn: typeArgs[0].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
-                DestinationTypeFqn: typeArgs[1].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
+                SourceTypeSymbol: src,
+                DestinationTypeSymbol: dst,
                 Kind: kind,
-                Location: AttributeLocation(attr, type.Locations[0]),
+                Location: mapLocation,
                 UserPartialMethod: userPartial,
                 UpdateInPlacePartial: updateInPlace,
                 Projection: projection,
                 CycleSafe: cycleSafe,
-                DeepClone: deepClone,
-                SourceTypeSymbol: typeArgs[0] as INamedTypeSymbol,
-                DestinationTypeSymbol: typeArgs[1] as INamedTypeSymbol));
+                DeepClone: deepClone));
         }
 
         if (decls.Count == 0 && polymorphics.Count == 0) return null;
@@ -248,6 +208,40 @@ internal static class MapperDiscovery
             TypeSymbol: type,
             SkipCollectionOverloads: skipCollectionOverloads);
     }
+
+    /// <summary>
+    /// The two types a mapping attribute names, when a mapping can be generated for them.
+    /// </summary>
+    /// <remarks>
+    /// A type the compiler could not bind, or a type parameter, which an attribute cannot take,
+    /// already has a compiler error, so no mapping is added and nothing more is reported. Any
+    /// other type that is not a class, struct, record or interface, such as an array, gets ZAMP023:
+    /// the generator has no properties or constructor to map it by.
+    /// </remarks>
+    private static (INamedTypeSymbol Source, INamedTypeSymbol Destination)? MappedTypes(
+        AttributeData attr,
+        Location location,
+        System.Collections.Generic.ICollection<DiagnosticInfo> diagnostics)
+    {
+        var typeArgs = attr.AttributeClass!.TypeArguments;
+        if (typeArgs.Length != 2) return null;
+        if (IsCompilerError(typeArgs[0]) || IsCompilerError(typeArgs[1])) return null;
+
+        if (typeArgs[0] is INamedTypeSymbol src && typeArgs[1] is INamedTypeSymbol dst)
+            return (src, dst);
+
+        var unsupported = typeArgs[0] is INamedTypeSymbol ? typeArgs[1] : typeArgs[0];
+        diagnostics.Add(DiagnosticInfo.Create(
+            Diagnostics.ZAMP023_MappingNotGenerated,
+            location,
+            typeArgs[0].ToDisplayString(),
+            typeArgs[1].ToDisplayString(),
+            $"'{unsupported.ToDisplayString()}' is not a class, struct, record or interface"));
+        return null;
+    }
+
+    private static bool IsCompilerError(ITypeSymbol type) =>
+        type.TypeKind is TypeKind.Error or TypeKind.TypeParameter;
 
     /// <summary>
     /// The location of an attribute as it is written, <c>Map&lt;Src, Dst&gt;(...)</c> without the
