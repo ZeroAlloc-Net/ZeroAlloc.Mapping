@@ -39,6 +39,17 @@ Every entry below is enforced by `tests/ZeroAlloc.Mapping.Tests/AllocationBudget
 | `[Map<,>]` `List<T>` overload (50 elements) | 2200 | 200 | List wrapper + backing array + 50 dst records |
 | `[Map<,>]` `IEnumerable<T>` lazy | 96 | 1000 | LINQ `Select` iterator, no enumeration |
 
+`tests/ZeroAlloc.Mapping.Tests/NestedCollectionBudgetTests.cs` holds a nested collection member to exactly its destination. Each budget is the measured cost of building the same destination by hand, so there is no headroom: a LINQ iterator, a closure or a re-grown list fails the test.
+
+| Nested collection member, 16 elements | Budget | Covers |
+|---|---|---|
+| `[Map<,>]` | destination | `List<T>`, `T[]`, `IList<T>`, `IReadOnlyList<T>`, `ICollection<T>`, `IReadOnlyCollection<T>`, `IEnumerable<T>`, and `List<T>` into `T[]` |
+| `[Map<,>]` update-in-place | destination list | `List<T>` member |
+| `[Map<,>]` / `[TryMap<,>]` element conversion | destination | `List<int>` into `List<long>`, `int[]` into `long[]` |
+| `[Map<,>(CycleSafe = true)]` | tracker + destination | `List<T>` and `T[]` members |
+| `[Map<,>(DeepClone = true)]` | destination | `List<T>` and `T[]` members |
+| `[Map<,>(DeepClone = true, CycleSafe = true)]` | tracker + destination | `List<T>` of `T[]` members |
+
 A few notes pulled directly from the test fixtures:
 
 - The deny path's 1024 B/call cap is a generous-but-tight bound dominated by the exception's stack-trace string. The point is not "tight" — it's "not 10 KB".

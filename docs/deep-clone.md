@@ -51,7 +51,7 @@ public static Customer Map(Customer src)
         ShippingAddress = Map(src.ShippingAddress),
         Orders = src.Orders is null
             ? null!
-            : Enumerable.ToList(Enumerable.Select(src.Orders, __e => __e is null ? null! : new Order { /* ... */ }))
+            : __MapToList<Order, Order>(src.Orders, static __e => __e is null ? null! : new Order { /* ... */ })
     };
 }
 

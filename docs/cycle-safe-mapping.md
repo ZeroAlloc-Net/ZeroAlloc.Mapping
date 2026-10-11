@@ -64,10 +64,12 @@ internal static CustomerDto Map(Customer src, IDictionary<object, object> tracke
     __dst.Name = src.Name;
     __dst.Orders = src.Orders is null
         ? null!
-        : Enumerable.ToList(Enumerable.Select(src.Orders, x => x is null ? null! : Map(x, tracker)));
+        : __MapToList<Order, OrderDto>(src.Orders, tracker, static (x, tracker) => x is null ? null! : Map(x, tracker));
     return __dst;
 }
 ```
+
+A collection member maps through a private `for`-loop helper that takes the tracker as an argument, so the lambda captures nothing and the member allocates only its destination collection and elements on top of the tracker.
 
 The entry overload always allocates a fresh tracker — there is no public surface that exposes the tracker. The recursive overload is `internal`, so cycle-safe mappings on the same class can call each other but external callers always go through the entry method. The tracker uses `ReferenceEqualityComparer.Instance` to identify objects by reference (not by `Equals`), which matches what ORM identity-maps do.
 

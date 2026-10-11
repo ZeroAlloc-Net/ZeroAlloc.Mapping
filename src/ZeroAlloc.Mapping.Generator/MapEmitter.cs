@@ -20,13 +20,16 @@ internal static class MapEmitter
         // A nested host is emitted inside partial declarations of its containing types.
         var openedTypes = HostDeclarations.Open(sb, cls.TypeSymbol!);
 
+        // Collection members map through for-loop helpers emitted once, after the mappings.
+        var loops = new CollectionLoops();
+
         // B12: gen-time graph walk for DeepClone+CycleSafe declarations. Collects reachable
         // types per MapperClass and reports ZAMP021 for cycles through primary-ctor-only
         // types. Empty when no declaration has both flags set.
         var reachable = CycleSafeDeepCloneEmitter.CollectReachableTypes(cls, comp, diagnostics.Add);
         if (reachable.Count > 0)
         {
-            CycleSafeDeepCloneEmitter.EmitClonerHelpers(sb, cls, comp, reachable);
+            CycleSafeDeepCloneEmitter.EmitClonerHelpers(sb, cls, comp, reachable, loops);
         }
 
         foreach (var decl in cls.Mappings)
@@ -39,7 +42,7 @@ internal static class MapEmitter
             if (match is null) continue;
 
             if (decl.Kind == MappingKind.TryMap)
-                TryMapEmitter.EmitTryMapMethod(sb, decl, match, cls, comp, src, dst);
+                TryMapEmitter.EmitTryMapMethod(sb, decl, match, cls, comp, src, dst, loops);
             else if (decl.CycleSafe)
             {
                 // CycleSafe routes through the tracker-threaded pair. When combined with
@@ -50,12 +53,12 @@ internal static class MapEmitter
                 // B12: pass reachable only for combined DeepClone+CycleSafe so the new
                 // fallback branch is gated; solo CycleSafe gets null and is byte-identical.
                 var reachableForDecl = (decl.DeepClone) ? reachable : null;
-                EmitCycleSafeMapPair(sb, decl, cls, comp, src, dst, reachableForDecl);
+                EmitCycleSafeMapPair(sb, decl, cls, comp, src, dst, reachableForDecl, loops);
             }
             else if (decl.DeepClone)
-                DeepCloneEmitter.EmitDeepCloneMethod(sb, decl, cls, comp, src, dst);
+                DeepCloneEmitter.EmitDeepCloneMethod(sb, decl, cls, comp, src, dst, loops);
             else
-                EmitMapMethod(sb, decl, match, cls, comp, src, dst);
+                EmitMapMethod(sb, decl, match, cls, comp, src, dst, loops);
 
             // LINQ expression-tree projection (only for [Map(Projection=true)]).
             if (decl.Kind == MappingKind.Map && decl.Projection)
@@ -69,7 +72,7 @@ internal static class MapEmitter
                 var inPlace = MatchUpdateInPlace(src, dst, decl.UpdateInPlacePartial, cls.CaseInsensitive);
                 if (inPlace is not null && AllInPlaceDestSettable(inPlace))
                 {
-                    EmitUpdateInPlaceMethod(sb, decl, inPlace, cls, comp, src, dst);
+                    EmitUpdateInPlaceMethod(sb, decl, inPlace, cls, comp, src, dst, loops);
                 }
             }
 
@@ -130,6 +133,8 @@ internal static class MapEmitter
                 }
             }
         }
+
+        loops.EmitHelpers(sb);
 
         for (var i = 0; i < openedTypes; i++) sb.Append("}\n");
         return (sb.ToString(), diagnostics);
@@ -231,7 +236,8 @@ internal static class MapEmitter
         Compilation comp,
         INamedTypeSymbol srcType,
         INamedTypeSymbol dstType,
-        Dictionary<INamedTypeSymbol, CycleSafeDeepCloneEmitter.ReachableTypeInfo>? reachable)
+        Dictionary<INamedTypeSymbol, CycleSafeDeepCloneEmitter.ReachableTypeInfo>? reachable,
+        CollectionLoops loops)
     {
         var srcFqn = decl.SourceTypeFqn;
         var dstFqn = decl.DestinationTypeFqn;
@@ -260,7 +266,7 @@ internal static class MapEmitter
             foreach (var m in match.Mappings)
             {
                 sb.Append("        __dst.").Append(m.TargetPropertyName).Append(" = ");
-                sb.Append(ResolveCycleSafeExpression(m, owningClass, comp, reachable));
+                sb.Append(ResolveCycleSafeExpression(m, owningClass, comp, reachable, loops));
                 sb.Append(";\n");
             }
             foreach (var c in match.Constants)
@@ -284,7 +290,8 @@ internal static class MapEmitter
         InPlaceMapping m,
         MapperClass owningClass,
         Compilation comp,
-        Dictionary<INamedTypeSymbol, CycleSafeDeepCloneEmitter.ReachableTypeInfo>? reachable)
+        Dictionary<INamedTypeSymbol, CycleSafeDeepCloneEmitter.ReachableTypeInfo>? reachable,
+        CollectionLoops loops)
     {
         if (m.IsFlattened)
         {
@@ -299,7 +306,8 @@ internal static class MapEmitter
 
         var srcExpr = "src." + m.SourcePropertyName;
 
-        // Collection of nested mappings — thread the tracker through each element.
+        // Collection of nested mappings — thread the tracker through each element. The loop
+        // takes the tracker as an argument instead of capturing it, so no closure is allocated.
         // Null-guard the source collection (if nullable) AND each element, because
         // mid-graph references in cycle-safe trees may be null and Map(null, tracker)
         // would NRE on the tracker lookup.
@@ -310,10 +318,8 @@ internal static class MapEmitter
             var nestedElem = NestedMappingResolver.FindNestedMapper(owningClass, srcColl.Value.Element, dstColl.Value.Element);
             if (nestedElem is not null)
             {
-                var loop = "(global::System.Linq.Enumerable.Select(" + srcExpr + ", x => x is null ? null! : Map(x, tracker)))";
-                var toCall = dstColl.Value.CollectionKind == "array"
-                    ? "global::System.Linq.Enumerable.ToArray" + loop
-                    : "global::System.Linq.Enumerable.ToList" + loop;
+                var toCall = loops.Map(srcExpr, m.SourceType, srcColl.Value.Element, dstColl.Value.Element,
+                    dstColl.Value.CollectionKind, "x", "x is null ? null! : Map(x, tracker)", withTracker: true);
                 if (m.SourceType.NullableAnnotation == NullableAnnotation.Annotated)
                     return srcExpr + " is null ? null! : " + toCall;
                 return toCall;
@@ -347,12 +353,10 @@ internal static class MapEmitter
                 var elemExpr = elemInfo.HasParameterlessCtor
                     ? "x is null ? null! : __CloneCycleSafe_" + MangleForRef(elemNt) + "(x, tracker)"
                     : "x is null ? null! : "
-                      + CycleSafeDeepCloneEmitter.EmitInlinePrimaryCtorClone(elemNt, "x", owningClass, comp, reachable);
+                      + CycleSafeDeepCloneEmitter.EmitInlinePrimaryCtorClone(elemNt, "x", owningClass, comp, reachable, loops);
 
-                var loop = "(global::System.Linq.Enumerable.Select(" + srcExpr + ", x => " + elemExpr + "))";
-                var toCall = dstCollB12.Value.CollectionKind == "array"
-                    ? "global::System.Linq.Enumerable.ToArray" + loop
-                    : "global::System.Linq.Enumerable.ToList" + loop;
+                var toCall = loops.Map(srcExpr, m.SourceType, srcCollB12.Value.Element, dstCollB12.Value.Element,
+                    dstCollB12.Value.CollectionKind, "x", elemExpr, withTracker: true);
                 if (m.SourceType.NullableAnnotation == NullableAnnotation.Annotated)
                     return srcExpr + " is null ? null! : " + toCall;
                 return toCall;
@@ -363,13 +367,13 @@ internal static class MapEmitter
                 return info.HasParameterlessCtor
                     ? srcExpr + " is null ? null! : __CloneCycleSafe_" + MangleForRef(propNt) + "(" + srcExpr + ", tracker)"
                     : srcExpr + " is null ? null! : "
-                      + CycleSafeDeepCloneEmitter.EmitInlinePrimaryCtorClone(propNt, srcExpr, owningClass, comp, reachable);
+                      + CycleSafeDeepCloneEmitter.EmitInlinePrimaryCtorClone(propNt, srcExpr, owningClass, comp, reachable, loops);
             }
         }
 
         // Standard conversion (primitive / value-object / ctor-based).
         var conv = ConversionResolver.Resolve(m.SourceType, m.TargetType, comp);
-        return ConversionResolver.Apply(conv, srcExpr, m.TargetType, owningClass.Culture);
+        return ConversionResolver.Apply(conv, srcExpr, m.TargetType, owningClass.Culture, loops);
     }
 #pragma warning restore MA0051
 
@@ -377,7 +381,7 @@ internal static class MapEmitter
     private static string MangleForRef(INamedTypeSymbol t) =>
         CycleSafeDeepCloneEmitter.MangleTypeNameForCall(t);
 
-    private static void EmitMapMethod(StringBuilder sb, MappingDecl decl, MatchResult match, MapperClass owningClass, Compilation comp, ITypeSymbol srcType, ITypeSymbol dstType)
+    private static void EmitMapMethod(StringBuilder sb, MappingDecl decl, MatchResult match, MapperClass owningClass, Compilation comp, ITypeSymbol srcType, ITypeSymbol dstType, CollectionLoops loops)
     {
         var partialKw = decl.UserPartialMethod is not null ? "partial " : "";
         sb.Append("    public static ").Append(partialKw).Append(decl.DestinationTypeFqn).Append(" Map(")
@@ -399,7 +403,7 @@ internal static class MapEmitter
 
         foreach (var m in mappings)
         {
-            var expr = ResolveExpression(m, owningClass, comp);
+            var expr = ResolveExpression(m, owningClass, comp, loops);
             sb.Append("            ").Append(m.TargetParamName).Append(": ").Append(expr);
             if (++idx < totalArgs) sb.Append(',');
             sb.Append('\n');
@@ -525,7 +529,7 @@ internal static class MapEmitter
         return true;
     }
 
-    private static void EmitUpdateInPlaceMethod(StringBuilder sb, MappingDecl decl, InPlaceMatch match, MapperClass owningClass, Compilation comp, ITypeSymbol srcType, ITypeSymbol dstType)
+    private static void EmitUpdateInPlaceMethod(StringBuilder sb, MappingDecl decl, InPlaceMatch match, MapperClass owningClass, Compilation comp, ITypeSymbol srcType, ITypeSymbol dstType, CollectionLoops loops)
     {
         sb.Append("    public static partial void Map(")
           .Append(decl.SourceTypeFqn).Append(" src, ")
@@ -544,7 +548,7 @@ internal static class MapEmitter
                 SourceType: m.SourceType,
                 TargetType: m.TargetType,
                 IsFlattened: m.IsFlattened);
-            var expr = ResolveExpression(pm, owningClass, comp);
+            var expr = ResolveExpression(pm, owningClass, comp, loops);
             sb.Append("        existingDst.").Append(m.TargetPropertyName).Append(" = ").Append(expr).Append(";\n");
         }
 
@@ -589,7 +593,7 @@ internal static class MapEmitter
         return conv.IsImplicit && (conv.IsReference || conv.IsIdentity || conv.IsBoxing);
     }
 
-    private static string ResolveExpression(PropertyMapping m, MapperClass owningClass, Compilation comp)
+    private static string ResolveExpression(PropertyMapping m, MapperClass owningClass, Compilation comp, CollectionLoops loops)
     {
         if (m.IsFlattened)
         {
@@ -607,8 +611,8 @@ internal static class MapEmitter
             var nested = NestedMappingResolver.FindNestedMapper(owningClass, srcColl.Value.Element, dstColl.Value.Element);
             if (nested is not null)
             {
-                var dstFqn = m.TargetType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-                return MakeCollectionExpression(srcExpr, srcColl.Value.Element, dstColl.Value.Element, dstFqn, dstColl.Value.CollectionKind);
+                return loops.Map(srcExpr, m.SourceType, srcColl.Value.Element, dstColl.Value.Element,
+                    dstColl.Value.CollectionKind, "x", "Map(x)", withTracker: false);
             }
         }
 
@@ -621,21 +625,11 @@ internal static class MapEmitter
 
         // Standard conversion
         var conv = ConversionResolver.Resolve(m.SourceType, m.TargetType, comp);
-        return ConversionResolver.Apply(conv, srcExpr, m.TargetType, owningClass.Culture);
+        return ConversionResolver.Apply(conv, srcExpr, m.TargetType, owningClass.Culture, loops);
     }
 
     internal static string FlatteningOperator(PropertyMapping m) =>
         m.TargetType.NullableAnnotation == NullableAnnotation.Annotated ? "?." : "!.";
-
-    private static string MakeCollectionExpression(string srcExpr, ITypeSymbol srcElem, ITypeSymbol dstElem, string dstFqn, string kind)
-    {
-        var dstElemFqn = dstElem.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-        var listOfDst = "global::System.Collections.Generic.List<" + dstElemFqn + ">";
-        var loop = "(global::System.Linq.Enumerable.Select(" + srcExpr + ", static x => Map(x)))";
-        if (kind == "array")
-            return "global::System.Linq.Enumerable.ToArray" + loop;
-        return "global::System.Linq.Enumerable.ToList" + loop;
-    }
 
     private static string FormatLiteral(object? value) => value switch
     {

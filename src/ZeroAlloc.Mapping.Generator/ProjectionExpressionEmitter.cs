@@ -139,7 +139,8 @@ internal static class ProjectionExpressionEmitter
 
         // Case 4: standard conversion.
         var conv = ConversionResolver.Resolve(m.SourceType, m.TargetType, comp);
-        sb.Append(ConversionResolver.Apply(conv, srcExpr, m.TargetType, cls.Culture));
+        // No loops: a query provider cannot translate a call to a private helper.
+        sb.Append(ConversionResolver.Apply(conv, srcExpr, m.TargetType, cls.Culture, loops: null));
     }
 
     /// <summary>

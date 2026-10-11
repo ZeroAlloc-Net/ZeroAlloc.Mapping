@@ -8,7 +8,7 @@ partial class M
         global::System.ArgumentNullException.ThrowIfNull(src);
         var __dst = new global::Order(
             Id: src.Id,
-            Items: global::System.Linq.Enumerable.ToList(global::System.Linq.Enumerable.Select(src.Items, static x => Map(x)))
+            Items: __MapToList<global::OrderItemRequest, global::OrderItem>(src.Items, static x => Map(x))
         );
         return __dst;
     }
@@ -76,6 +76,14 @@ partial class M
         var __dst = new global::OrderItem[src.Count];
         for (int i = 0; i < src.Count; i++)
             __dst[i] = Map(src[i]);
+        return __dst;
+    }
+    private static global::System.Collections.Generic.List<TDst> __MapToList<TSrc, TDst>(global::System.Collections.Generic.List<TSrc> src, global::System.Func<TSrc, TDst> map)
+    {
+        global::System.ArgumentNullException.ThrowIfNull(src);
+        var __dst = new global::System.Collections.Generic.List<TDst>(src.Count);
+        for (int i = 0; i < src.Count; i++)
+            __dst.Add(map(src[i]));
         return __dst;
     }
 }
