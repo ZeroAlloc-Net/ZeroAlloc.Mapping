@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.9](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/compare/v1.6.8...v1.6.9) (2026-10-11)
+
+
+### Performance Improvements
+
+* map nested collection members with for loops instead of LINQ ([#154](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/issues/154)) ([0d4c711](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/0d4c71189cb73a08abe5dd9ff5c6d548f4a01de2)), closes [#153](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/issues/153)
+
 ## [1.6.8](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/compare/v1.6.7...v1.6.8) (2026-09-30)
 
 
