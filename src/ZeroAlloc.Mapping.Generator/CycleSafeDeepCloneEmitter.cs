@@ -140,12 +140,13 @@ internal static class CycleSafeDeepCloneEmitter
         StringBuilder sb,
         MapperClass cls,
         Compilation comp,
-        Dictionary<INamedTypeSymbol, ReachableTypeInfo> collected)
+        Dictionary<INamedTypeSymbol, ReachableTypeInfo> collected,
+        CollectionLoops loops)
     {
         foreach (var kv in collected)
         {
             if (!kv.Value.HasParameterlessCtor) continue;
-            EmitHelper(sb, kv.Value, cls, comp, collected);
+            EmitHelper(sb, kv.Value, cls, comp, collected, loops);
         }
     }
 
@@ -154,7 +155,8 @@ internal static class CycleSafeDeepCloneEmitter
         ReachableTypeInfo info,
         MapperClass cls,
         Compilation comp,
-        Dictionary<INamedTypeSymbol, ReachableTypeInfo> collected)
+        Dictionary<INamedTypeSymbol, ReachableTypeInfo> collected,
+        CollectionLoops loops)
     {
         var type = info.Type;
         var fqn = type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
@@ -175,7 +177,7 @@ internal static class CycleSafeDeepCloneEmitter
 
             var srcAccess = "src." + prop.Name;
             sb.Append("        __new.").Append(prop.Name).Append(" = ");
-            EmitPropertyAssignment(sb, srcAccess, prop.Type, cls, comp, collected);
+            EmitPropertyAssignment(sb, srcAccess, prop.Type, cls, comp, collected, loops);
             sb.Append(";\n");
         }
 
@@ -189,7 +191,7 @@ internal static class CycleSafeDeepCloneEmitter
     /// <list type="bullet">
     ///   <item>value/string → direct (no clone needed; ConversionResolver handles primitives).</item>
     ///   <item>explicit nested [Map&lt;,&gt;] → <c>Map(srcExpr, tracker)</c>.</item>
-    ///   <item>collection → ToArray/ToList over element-wise clone calls.</item>
+    ///   <item>collection → a for loop over element-wise clone calls, see <see cref="CollectionLoops"/>.</item>
     ///   <item>reference type with parameterless ctor → <c>__CloneCycleSafe_T(srcExpr, tracker)</c>.</item>
     ///   <item>reference type without parameterless ctor (primary-ctor-only) → inline
     ///     <c>new T(arg1: ..., arg2: ...)</c>. ZAMP021 already fired if this is part of a cycle.</item>
@@ -202,12 +204,13 @@ internal static class CycleSafeDeepCloneEmitter
         ITypeSymbol propType,
         MapperClass cls,
         Compilation comp,
-        Dictionary<INamedTypeSymbol, ReachableTypeInfo> collected)
+        Dictionary<INamedTypeSymbol, ReachableTypeInfo> collected,
+        CollectionLoops loops)
     {
         if (propType.IsValueType || propType.SpecialType == SpecialType.System_String)
         {
             var conv = ConversionResolver.Resolve(propType, propType, comp);
-            sb.Append(ConversionResolver.Apply(conv, srcExpr, propType, cls.Culture));
+            sb.Append(ConversionResolver.Apply(conv, srcExpr, propType, cls.Culture, loops));
             return;
         }
 
@@ -238,13 +241,11 @@ internal static class CycleSafeDeepCloneEmitter
             else
             {
                 // Primary-ctor-only elem; inline construction.
-                elemExpr = "x is null ? null! : " + EmitInlinePrimaryCtorClone(elemNt, "x", cls, comp, collected);
+                elemExpr = "x is null ? null! : " + EmitInlinePrimaryCtorClone(elemNt, "x", cls, comp, collected, loops);
             }
 
-            var loop = "(global::System.Linq.Enumerable.Select(" + srcExpr + ", x => " + elemExpr + "))";
-            var toCall = coll.Value.CollectionKind == "array"
-                ? "global::System.Linq.Enumerable.ToArray" + loop
-                : "global::System.Linq.Enumerable.ToList" + loop;
+            // The tracker is passed to the loop, not captured, so no closure is allocated.
+            var toCall = loops.Map(srcExpr, propType, elemNt, elemNt, coll.Value.CollectionKind, "x", elemExpr, withTracker: true);
             sb.Append(srcExpr).Append(" is null ? null! : ").Append(toCall);
             return;
         }
@@ -270,7 +271,7 @@ internal static class CycleSafeDeepCloneEmitter
 
             // Primary-ctor-only reachable type → inline construction.
             sb.Append(srcExpr).Append(" is null ? null! : ")
-              .Append(EmitInlinePrimaryCtorClone(propNt, srcExpr, cls, comp, collected));
+              .Append(EmitInlinePrimaryCtorClone(propNt, srcExpr, cls, comp, collected, loops));
             return;
         }
 
@@ -289,7 +290,8 @@ internal static class CycleSafeDeepCloneEmitter
         string srcExpr,
         MapperClass cls,
         Compilation comp,
-        Dictionary<INamedTypeSymbol, ReachableTypeInfo> collected)
+        Dictionary<INamedTypeSymbol, ReachableTypeInfo> collected,
+        CollectionLoops loops)
     {
         var fqn = type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
         var ctor = type.InstanceConstructors
@@ -315,7 +317,7 @@ internal static class CycleSafeDeepCloneEmitter
             sb.Append(p.Name).Append(": ");
             // Recurse via EmitPropertyAssignment captured into a local sb.
             var inner = new StringBuilder();
-            EmitPropertyAssignment(inner, srcExpr + "." + p.Name, p.Type, cls, comp, collected);
+            EmitPropertyAssignment(inner, srcExpr + "." + p.Name, p.Type, cls, comp, collected, loops);
             sb.Append(inner);
             if (i + 1 < args.Count) sb.Append(", ");
         }

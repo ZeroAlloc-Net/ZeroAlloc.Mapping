@@ -32,7 +32,8 @@ internal static class DeepCloneEmitter
         MapperClass cls,
         Compilation comp,
         INamedTypeSymbol srcType,
-        INamedTypeSymbol dstType)
+        INamedTypeSymbol dstType,
+        CollectionLoops loops)
     {
         var srcFqn = decl.SourceTypeFqn;
         var dstFqn = decl.DestinationTypeFqn;
@@ -41,7 +42,7 @@ internal static class DeepCloneEmitter
         sb.Append("    {\n");
         sb.Append("        global::System.ArgumentNullException.ThrowIfNull(src);\n");
 
-        EmitCloneBody(sb, "__dst", "src", srcType, dstType, cls, comp, "        ", new HashSet<string>(System.StringComparer.Ordinal));
+        EmitCloneBody(sb, "__dst", "src", srcType, dstType, cls, comp, "        ", new HashSet<string>(System.StringComparer.Ordinal), loops);
 
         sb.Append("        return __dst;\n");
         sb.Append("    }\n");
@@ -62,7 +63,8 @@ internal static class DeepCloneEmitter
         MapperClass cls,
         Compilation comp,
         string indent,
-        HashSet<string> visiting)
+        HashSet<string> visiting,
+        CollectionLoops loops)
     {
         var dstFqn = dstType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
 
@@ -87,7 +89,7 @@ internal static class DeepCloneEmitter
                 if (PropertyMatcher.IsObsolete(sp)) continue;
 
                 sb.Append(indent).Append(dstLocal).Append('.').Append(dp.Name).Append(" = ");
-                EmitPropertyExpression(sb, srcAccess + "." + sp.Name, sp.Type, dp.Type, cls, comp, indent, visiting);
+                EmitPropertyExpression(sb, srcAccess + "." + sp.Name, sp.Type, dp.Type, cls, comp, indent, visiting, loops);
                 sb.Append(";\n");
             }
             return;
@@ -111,7 +113,7 @@ internal static class DeepCloneEmitter
                 var p = args[i];
                 var sp = srcProps[p.Name];
                 sb.Append(indent).Append("    ").Append(p.Name).Append(": ");
-                EmitPropertyExpression(sb, srcAccess + "." + sp.Name, sp.Type, p.Type, cls, comp, indent + "    ", visiting);
+                EmitPropertyExpression(sb, srcAccess + "." + sp.Name, sp.Type, p.Type, cls, comp, indent + "    ", visiting, loops);
                 if (i + 1 < args.Count) sb.Append(',');
                 sb.Append('\n');
             }
@@ -136,13 +138,14 @@ internal static class DeepCloneEmitter
         MapperClass cls,
         Compilation comp,
         string indent,
-        HashSet<string> visiting)
+        HashSet<string> visiting,
+        CollectionLoops loops)
     {
         // Case 1: value type or string — direct assignment / standard conversion.
         if (srcType.IsValueType || srcType.SpecialType == SpecialType.System_String)
         {
             var conv = ConversionResolver.Resolve(srcType, dstType, comp);
-            sb.Append(ConversionResolver.Apply(conv, srcExpr, dstType, cls.Culture));
+            sb.Append(ConversionResolver.Apply(conv, srcExpr, dstType, cls.Culture, loops));
             return;
         }
 
@@ -160,7 +163,7 @@ internal static class DeepCloneEmitter
         var dstColl = NestedMappingResolver.AsCollection(dstType);
         if (srcColl is not null && dstColl is not null)
         {
-            EmitCollectionClone(sb, srcExpr, srcColl.Value, dstColl.Value, cls, comp, indent, visiting);
+            EmitCollectionClone(sb, srcExpr, srcType, srcColl.Value, dstColl.Value, cls, comp, indent, visiting, loops);
             return;
         }
 
@@ -200,7 +203,7 @@ internal static class DeepCloneEmitter
                         if (!first) sb.Append(',');
                         first = false;
                         sb.Append(' ').Append(dp.Name).Append(" = ");
-                        EmitPropertyExpression(sb, srcExpr + "." + sp.Name, sp.Type, dp.Type, cls, comp, indent, visiting);
+                        EmitPropertyExpression(sb, srcExpr + "." + sp.Name, sp.Type, dp.Type, cls, comp, indent, visiting, loops);
                     }
                     sb.Append(" }");
                 }
@@ -224,7 +227,7 @@ internal static class DeepCloneEmitter
                             var sp = srcProps[p.Name];
                             if (i > 0) sb.Append(", ");
                             sb.Append(p.Name).Append(": ");
-                            EmitPropertyExpression(sb, srcExpr + "." + sp.Name, sp.Type, p.Type, cls, comp, indent, visiting);
+                            EmitPropertyExpression(sb, srcExpr + "." + sp.Name, sp.Type, p.Type, cls, comp, indent, visiting, loops);
                         }
                         sb.Append(')');
                     }
@@ -247,43 +250,34 @@ internal static class DeepCloneEmitter
     }
 
     /// <summary>
-    /// Emits a deep-clone for a collection property: <c>new List&lt;T&gt;(src.X.Count)</c>
-    /// (or <c>new T[src.X.Length]</c>) followed by a foreach that adds a cloned element.
-    /// Element clone uses the same per-property logic — recursing through the type graph
-    /// for nested reference elements.
+    /// Emits a deep-clone for a collection property: a for loop that fills a new
+    /// <c>List&lt;T&gt;</c> or <c>T[]</c> sized to the source with cloned elements, see
+    /// <see cref="CollectionLoops"/>. A null source collection clones to null. Element clone
+    /// uses the same per-property logic — recursing through the type graph for nested
+    /// reference elements.
     /// </summary>
     private static void EmitCollectionClone(
         StringBuilder sb,
         string srcExpr,
+        ITypeSymbol srcCollection,
         (ITypeSymbol Element, string CollectionKind) srcColl,
         (ITypeSymbol Element, string CollectionKind) dstColl,
         MapperClass cls,
         Compilation comp,
         string indent,
-        HashSet<string> visiting)
+        HashSet<string> visiting,
+        CollectionLoops loops)
     {
-        var srcElem = srcColl.Element;
-        var dstElem = dstColl.Element;
-        var dstElemFqn = dstElem.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+        const string elemParam = "__e";
 
-        // Use an inline lambda + Select + ToList/ToArray pattern (single-expression form so
-        // it can appear on the right-hand side of an assignment / named ctor arg).
-        var elemParam = "__e";
+        // The element clone is an expression over __e only, so it is a static lambda handed to
+        // a for-loop helper, keeping the whole member a single expression.
+        var element = new StringBuilder();
+        EmitPropertyExpression(element, elemParam, srcColl.Element, dstColl.Element, cls, comp, indent, visiting, loops);
 
-        if (dstColl.CollectionKind == "array")
-        {
-            sb.Append(srcExpr).Append(" is null ? null! : global::System.Linq.Enumerable.ToArray(global::System.Linq.Enumerable.Select(")
-              .Append(srcExpr).Append(", ").Append(elemParam).Append(" => ");
-            EmitPropertyExpression(sb, elemParam, srcElem, dstElem, cls, comp, indent, visiting);
-            sb.Append("))");
-        }
-        else
-        {
-            sb.Append(srcExpr).Append(" is null ? null! : global::System.Linq.Enumerable.ToList(global::System.Linq.Enumerable.Select(")
-              .Append(srcExpr).Append(", ").Append(elemParam).Append(" => ");
-            EmitPropertyExpression(sb, elemParam, srcElem, dstElem, cls, comp, indent, visiting);
-            sb.Append("))");
-        }
+        sb.Append(srcExpr).Append(" is null ? null! : ")
+          .Append(loops.Map(srcExpr, srcCollection, srcColl.Element, dstColl.Element, dstColl.CollectionKind,
+              elemParam, element.ToString(), withTracker: false));
     }
 
     /// <summary>

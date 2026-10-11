@@ -5,7 +5,7 @@ namespace ZeroAlloc.Mapping.Generator;
 
 internal static class TryMapEmitter
 {
-    public static void EmitTryMapMethod(StringBuilder sb, MappingDecl decl, MatchResult match, MapperClass owningClass, Compilation comp, ITypeSymbol srcType, ITypeSymbol dstType)
+    public static void EmitTryMapMethod(StringBuilder sb, MappingDecl decl, MatchResult match, MapperClass owningClass, Compilation comp, ITypeSymbol srcType, ITypeSymbol dstType, CollectionLoops loops)
     {
         var partialKw = decl.UserPartialMethod is not null ? "partial " : "";
         var resultType = "global::ZeroAlloc.Results.Result<" + decl.DestinationTypeFqn + ", global::ZeroAlloc.Mapping.MappingError>";
@@ -38,7 +38,7 @@ internal static class TryMapEmitter
         var args = new System.Collections.Generic.List<string>(mappings.Count);
         for (var i = 0; i < mappings.Count; i++)
         {
-            args.Add(EmitMember(sb, mappings[i], i, resultType, owningClass, comp));
+            args.Add(EmitMember(sb, mappings[i], i, resultType, owningClass, comp, loops));
         }
 
         sb.Append("            var __dst = new ").Append(decl.DestinationTypeFqn).Append("(\n");
@@ -92,7 +92,8 @@ internal static class TryMapEmitter
     /// otherwise. A nested [Map] cannot fail this way; if it throws, the enclosing catch reports it.
     /// </remarks>
     private static string EmitMember(
-        StringBuilder sb, PropertyMapping m, int index, string resultType, MapperClass owningClass, Compilation comp)
+        StringBuilder sb, PropertyMapping m, int index, string resultType, MapperClass owningClass, Compilation comp,
+        CollectionLoops loops)
     {
         if (m.IsFlattened)
         {
@@ -117,7 +118,7 @@ internal static class TryMapEmitter
         }
 
         var conv = ConversionResolver.Resolve(m.SourceType, m.TargetType, comp);
-        return ConversionResolver.Apply(conv, srcExpr, m.TargetType, owningClass.Culture);
+        return ConversionResolver.Apply(conv, srcExpr, m.TargetType, owningClass.Culture, loops);
     }
 
     private static void EmitObjectMember(

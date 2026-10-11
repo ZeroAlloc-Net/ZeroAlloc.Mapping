@@ -10,7 +10,7 @@ partial class M
         global::System.ArgumentNullException.ThrowIfNull(src);
         var __dst = new global::MyApp.Dst();
         __dst.OrderId = src.OrderId;
-        __dst.Tags = src.Tags is null ? null! : global::System.Linq.Enumerable.ToList(global::System.Linq.Enumerable.Select(src.Tags, __e => __e is null ? null! : new global::MyApp.Tag { Name = __e.Name, Id = __e.Id }));
+        __dst.Tags = src.Tags is null ? null! : __MapToList<global::MyApp.Tag, global::MyApp.Tag>(src.Tags, static __e => __e is null ? null! : new global::MyApp.Tag { Name = __e.Name, Id = __e.Id });
         return __dst;
     }
     public static global::System.Collections.Generic.List<global::MyApp.Dst> Map(global::System.Collections.Generic.List<global::MyApp.Src> src)
@@ -40,6 +40,14 @@ partial class M
         var __dst = new global::MyApp.Dst[src.Count];
         for (int i = 0; i < src.Count; i++)
             __dst[i] = Map(src[i]);
+        return __dst;
+    }
+    private static global::System.Collections.Generic.List<TDst> __MapToList<TSrc, TDst>(global::System.Collections.Generic.List<TSrc> src, global::System.Func<TSrc, TDst> map)
+    {
+        global::System.ArgumentNullException.ThrowIfNull(src);
+        var __dst = new global::System.Collections.Generic.List<TDst>(src.Count);
+        for (int i = 0; i < src.Count; i++)
+            __dst.Add(map(src[i]));
         return __dst;
     }
 }

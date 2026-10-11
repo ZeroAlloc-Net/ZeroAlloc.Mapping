@@ -17,7 +17,7 @@ partial class M
         var __dst = new global::MyApp.ParentDst();
         tracker.Add(src, __dst);
         __dst.Id = src.Id;
-        __dst.Items = src.Items is null ? null! : global::System.Linq.Enumerable.ToList(global::System.Linq.Enumerable.Select(src.Items, x => x is null ? null! : Map(x, tracker)));
+        __dst.Items = src.Items is null ? null! : __MapToList<global::MyApp.ItemSrc, global::MyApp.ItemDst>(src.Items, tracker, static (x, tracker) => x is null ? null! : Map(x, tracker));
         return __dst;
     }
     public static global::System.Collections.Generic.List<global::MyApp.ParentDst> Map(global::System.Collections.Generic.List<global::MyApp.ParentSrc> src)
@@ -91,6 +91,14 @@ partial class M
         var __dst = new global::MyApp.ItemDst[src.Count];
         for (int i = 0; i < src.Count; i++)
             __dst[i] = Map(src[i]);
+        return __dst;
+    }
+    private static global::System.Collections.Generic.List<TDst> __MapToList<TSrc, TDst>(global::System.Collections.Generic.List<TSrc> src, global::System.Collections.Generic.IDictionary<object, object> tracker, global::System.Func<TSrc, global::System.Collections.Generic.IDictionary<object, object>, TDst> map)
+    {
+        global::System.ArgumentNullException.ThrowIfNull(src);
+        var __dst = new global::System.Collections.Generic.List<TDst>(src.Count);
+        for (int i = 0; i < src.Count; i++)
+            __dst.Add(map(src[i], tracker));
         return __dst;
     }
 }

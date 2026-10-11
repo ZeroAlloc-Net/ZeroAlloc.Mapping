@@ -35,6 +35,7 @@ internal sealed record Conversion(ConversionKind Kind, IMethodSymbol? Method = n
 /// null source collection maps to a null destination.
 /// </summary>
 internal sealed record CollectionConversion(
+    ITypeSymbol SourceCollection,
     ITypeSymbol SourceElement,
     ITypeSymbol TargetElement,
     ConversionKind ElementKind,
@@ -96,6 +97,7 @@ internal static class ConversionResolver
             var element = Resolve(sc.Element, tc.Element, comp).Kind;
             var converts = element is ConversionKind.Identity or ConversionKind.ImplicitCast;
             var collection = new CollectionConversion(
+                source,
                 sc.Element,
                 tc.Element,
                 converts || element == ConversionKind.Explicit ? element : ConversionKind.None,
@@ -129,7 +131,12 @@ internal static class ConversionResolver
             NestedMappingResolver.FindNestedMapper(cls, c.SourceElement, c.TargetElement) is null;
     }
 
-    public static string Apply(Conversion conv, string srcExpr, ITypeSymbol target, string? culture = null)
+    /// <summary>
+    /// The expression that converts <paramref name="srcExpr"/> to <paramref name="target"/>.
+    /// A collection is copied with <paramref name="loops"/>; without it, as in an expression-tree
+    /// projection, with <c>Enumerable</c>.
+    /// </summary>
+    public static string Apply(Conversion conv, string srcExpr, ITypeSymbol target, string? culture, CollectionLoops? loops)
     {
         return conv.Kind switch
         {
@@ -140,7 +147,7 @@ internal static class ConversionResolver
             ConversionKind.Parse => HasFormatProvider(conv.Method)
                 ? $"{target.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}.Parse({srcExpr}, {CultureExpr(culture)})"
                 : $"{target.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}.Parse({srcExpr})",
-            ConversionKind.CollectionElements => ApplyCollection(conv.Collection!, srcExpr),
+            ConversionKind.CollectionElements => ApplyCollection(conv.Collection!, srcExpr, loops),
             _ => srcExpr,
         };
     }
@@ -151,11 +158,20 @@ internal static class ConversionResolver
 
     /// <summary>
     /// Copies a collection into the destination kind, casting each element when the element
-    /// types differ. The cast only spells out an implicit conversion. The lambda is not static,
-    /// so the same expression works inside a projection's expression tree.
+    /// types differ. The cast only spells out an implicit conversion. A cast copy goes through a
+    /// for loop when <paramref name="loops"/> is given. Without it, for a projection's expression
+    /// tree, it is <c>Enumerable.Select</c> with a lambda that is not static.
     /// </summary>
-    private static string ApplyCollection(CollectionConversion c, string srcExpr)
+    private static string ApplyCollection(CollectionConversion c, string srcExpr, CollectionLoops? loops)
     {
+        if (loops is not null && c.ElementKind != ConversionKind.Identity)
+        {
+            var target = c.TargetElement.ToDisplayString(NullableQualifiedFormat);
+            var loop = loops.Map(srcExpr, c.SourceCollection, c.SourceElement, c.TargetElement,
+                c.TargetCollectionKind, "__x", "(" + target + ")__x", withTracker: false);
+            return c.NullPassThrough ? "(" + srcExpr + " is null ? null : " + loop + ")" : loop;
+        }
+
         var elements = c.ElementKind == ConversionKind.Identity
             ? srcExpr
             : "global::System.Linq.Enumerable.Select(" + srcExpr + ", __x => (" +

@@ -125,7 +125,13 @@ public sealed record Order(int Id, List<OrderItem> Items);
 public static partial class M { }
 ```
 
-The generator finds `[Map<OrderItemRequest, OrderItem>]` on the same class and emits the outer mapping as `Items: Map(src.Items)` — calling its own auto-emitted `List<OrderItemRequest> → List<OrderItem>` overload. No reflection, no DI, no registration step; the wiring is resolved at compile time from the attributes on the class.
+The generator finds `[Map<OrderItemRequest, OrderItem>]` on the same class and maps the member with a `for` loop that calls the element mapper:
+
+```csharp
+Items: __MapToList<OrderItemRequest, OrderItem>(src.Items, static x => Map(x))
+```
+
+`__MapToList` and `__MapToArray` are private helpers the generator adds to the class, only for the shapes the class uses. They size the destination from the source's `Count` or `Length` and fill it in order, so the member allocates exactly its destination collection and elements: no LINQ iterator, no re-grown list, and no delegate, because a `static` lambda is cached. Every collection shape works on either side: `List<T>`, `T[]`, `IList<T>`, `IReadOnlyList<T>`, `ICollection<T>`, `IReadOnlyCollection<T>` and `IEnumerable<T>`. An array destination gets a `T[]`, every other destination a `List<T>`. A source typed as an interface is still walked by index when it is a list at runtime; one that can only be enumerated is presized when it knows its count. A `null` source collection throws `ArgumentNullException`. No reflection, no DI, no registration step; the wiring is resolved at compile time from the attributes on the class. The same loops serve `CycleSafe` and `DeepClone` mappings, and the element conversion below.
 
 This composes the same way for nested object properties (not collections) — declare `[Map<CustomerRequest, Customer>]` alongside the outer mapping and the generator chains the sibling call automatically.
 
@@ -156,7 +162,7 @@ When you'd reach for it:
 
 ## Allocation Costs
 
-The success path for collection overloads allocates exactly the destination container — `List<TDst>` (capacity-presized, single backing array), `TDst[]`, or the array surfaced as `IReadOnlyList<TDst>`. The `IEnumerable<TDst>` lazy overload allocates only the `Select` iterator until the consumer materialises it.
+The success path for collection overloads allocates exactly the destination container — `List<TDst>` (capacity-presized, single backing array), `TDst[]`, or the array surfaced as `IReadOnlyList<TDst>`. The `IEnumerable<TDst>` lazy overload allocates only the `Select` iterator until the consumer materialises it. A nested collection member allocates exactly its destination collection and elements, for every shape.
 
 For the per-budget numbers and BenchmarkDotNet baselines, see [Performance](performance.md).
 
