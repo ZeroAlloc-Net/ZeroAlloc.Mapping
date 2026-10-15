@@ -23,7 +23,7 @@ Source-generated, zero-allocation, AOT-safe Command→Domain→DTO mapper for .N
 | 7 | [Update-in-Place](update-in-place.md) | `void Map(TSrc, TDst)` for entity-tracker scenarios |
 | 8 | [Hooks](hooks.md) | `[BeforeMap]` and `[AfterMap]` |
 | 9 | [Culture & Strict Mode](culture-and-strict.md) | `[MappingCulture]`, `[StrictSourceMapping]`, `[CaseInsensitiveMapping]` |
-| 10 | [Diagnostics](diagnostics.md) | ZAMP001-020 reference |
+| 10 | [Diagnostics](diagnostics.md) | ZAMP001–ZAMP024 reference |
 | 11 | [Performance](performance.md) | Zero-alloc internals, allocation budgets, AOT |
 | 12 | [Advanced](advanced.md) | `MappingError` tree, edge cases, Result integration |
 | 13 | [Testing](testing.md) | Snapshot patterns, allocation gates, generator harness |

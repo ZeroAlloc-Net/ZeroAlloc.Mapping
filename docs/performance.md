@@ -33,7 +33,7 @@ Every entry below is enforced by `tests/ZeroAlloc.Mapping.Tests/AllocationBudget
 | `[Map<,>]` with hooks | 80 | 1000 | Empty `[BeforeMap]`/`[AfterMap]` add no overhead |
 | `[ReverseMap<,>]` forward | 80 | 1000 | Same as flat — desugars to `[Map<,>]` |
 | `[Map<,>]` flatten | 80 | 1000 | `Outer.Nested.Value` is a property access, no allocation |
-| `[Map<,>]` update-in-place | 80 | 1000 | No destination alloc; only field writes (caller supplies buffer) |
+| `[Map<,>]` update-in-place | 0 | 1000 | No destination alloc; only field writes (caller supplies buffer) |
 | `[Map<,>]` with `[MappingCulture]` | 256 | 1000 | `decimal.Parse` non-Invariant overhead (~160 B BCL) |
 | `[PolymorphicMap<,>]` dispatch | 96 | 1000 | + runtime type-test |
 | `[Map<,>]` `List<T>` overload (50 elements) | 2200 | 200 | List wrapper + backing array + 50 dst records |
