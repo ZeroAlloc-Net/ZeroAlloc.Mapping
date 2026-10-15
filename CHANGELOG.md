@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.10](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/compare/v1.6.9...v1.6.10) (2026-10-15)
+
+
+### Documentation
+
+* correct README samples, claims and links ([#160](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/issues/160)) ([33e5153](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/33e5153a5852bd159782335d70bf312e3145e637))
+
 ## [1.6.9](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/compare/v1.6.8...v1.6.9) (2026-10-11)
 
 
