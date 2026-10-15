@@ -212,11 +212,13 @@ public class AllocationBudgetTests
     // ---- 3 v1.2-extension feature budgets ----
 
     [Fact]
-    public void Map_UpdateInPlace_WithinBudget()
+    public void Map_UpdateInPlace_AllocatesNothing()
     {
+        // Update-in-place writes into a caller-supplied destination, so the whole public call
+        // allocates nothing. The README promises zero destination allocation; this pins it.
         var src = new BudgetUpdateSrc(1, "n");
         var dst = new BudgetUpdateDst { Id = 0, Notes = "" };
-        AllocationGate.AssertBudget(80, 1000, () => BudgetUpdateFixtures.Map(src, dst), "[Map] update-in-place");
+        AllocationGate.AssertBudget(0, 1000, () => BudgetUpdateFixtures.Map(src, dst), "[Map] update-in-place");
     }
 
     [Fact]
