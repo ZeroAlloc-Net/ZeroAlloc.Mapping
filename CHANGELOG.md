@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.12](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/compare/v1.6.11...v1.6.12) (2026-10-16)
+
+
+### Documentation
+
+* link the live mapping.zeroalloc.net docs site ([#169](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/issues/169)) ([318a469](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/318a4698dccc98be41fd4d5cc0554d09aa284a86))
+
 ## [1.6.11](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/compare/v1.6.10...v1.6.11) (2026-10-16)
 
 
