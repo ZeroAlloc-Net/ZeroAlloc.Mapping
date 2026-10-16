@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.6.11](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/compare/v1.6.10...v1.6.11) (2026-10-16)
+
+
+### Documentation
+
+* rewrite the readme as a product page ([#164](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/issues/164)) ([2a5c487](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/2a5c4879adcb49b1de83c71cca76889c4ae8af2d))
+* state the measured automapper gap instead of 10x to 100x ([#166](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/issues/166)) ([7e358f3](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/7e358f3a6ce689f0bd594bea67c7f132810b9879))
+
 ## [1.6.10](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/compare/v1.6.9...v1.6.10) (2026-10-15)
 
 
