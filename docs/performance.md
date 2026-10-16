@@ -283,7 +283,7 @@ rm -rf benchmarks/ZeroAlloc.Mapping.Benchmarks/generated
 
 - **HandWritten** is the speed-of-light. ZeroAlloc.Mapping should match it (or be within noise) for FlatIdentity and UpdateInPlace.
 - **Mapperly** should be within ~30% of ZeroAlloc.Mapping on most scenarios — both are source generators emitting nearly identical IL, so any large gap is worth investigating.
-- **AutoMapper** typically lands 10x–100x slower with non-zero allocation everywhere. That gap is the cost of runtime expression-tree compilation and per-call rule lookup.
+- **AutoMapper** lands 2.0×–4.6× the hand-written baseline on the single-object scenarios above and 18.7× on update-in-place, where ZeroAlloc.Mapping stays within 1.0×–1.4× of it. AutoMapper is faster on the large collection scenario, at 0.85×, but allocates 86.52 KB there against 78.18 KB; on every other scenario all four mappers allocate the same. The time gap is the cost of runtime expression-tree compilation and per-call rule lookup.
 - The `Allocated` column is the load-bearing one for "zero-allocation" claims. If ZeroAlloc.Mapping shows non-zero bytes, the destination type itself is being measured (records allocate; structs don't) — see the budget table above for per-shape baselines.
 - Differences below ~10ns on the FlatIdentity table are within JIT noise (see the StdDev column); the headline is the UpdateInPlace ratio (18.66× for AutoMapper).
 
