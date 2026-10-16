@@ -6,7 +6,14 @@
 [![AOT](https://img.shields.io/badge/AOT--Compatible-passing-brightgreen)](https://learn.microsoft.com/dotnet/core/deploying/native-aot/)
 [![GitHub Sponsors](https://img.shields.io/github/sponsors/MarcelRoozekrans?style=flat&logo=githubsponsors&color=ea4aaa&label=Sponsor)](https://github.com/sponsors/MarcelRoozekrans)
 
-ZeroAlloc.Mapping is a Roslyn source generator that emits strongly-typed Command→Domain→DTO mappers at compile time. No reflection. No expression trees. No runtime configuration. The success path runs with zero allocation beyond the destination instance itself, and the generated code is fully Native AOT compatible.
+**Source-generated object mapper for .NET, an AutoMapper alternative that writes your mapping code at compile time: no reflection, no runtime configuration, NativeAOT-ready.**
+
+## Why ZeroAlloc.Mapping
+
+- **Allocates what hand-written code allocates.** A flat record copy allocates 72 B, the same as `new Dst(...)` by hand. Update-in-place allocates 0 B, asserted by a test that fails CI on any regression.
+- **1.8× to 13.8× faster than AutoMapper** on single-object mappings, measured in the same BenchmarkDotNet run.
+- **Works under NativeAOT and trimming.** The generated body is plain property reads and a constructor call. The AOT smoke test publishes with trim and AOT warnings treated as errors.
+- **Mistakes fail the build, not the request.** A destination property with no source is compile error ZAMP001, not a runtime exception on first use.
 
 ## Install
 
@@ -14,92 +21,65 @@ ZeroAlloc.Mapping is a Roslyn source generator that emits strongly-typed Command
 dotnet add package ZeroAlloc.Mapping
 ```
 
-The generator runs automatically as part of `dotnet build` — there is no DI registration or runtime configuration.
+The generator runs as part of `dotnet build`. There is no DI registration and no startup configuration.
 
-## Example
+## Quick start
 
 ```csharp
 using ZeroAlloc.Mapping;
 
-// 3. Use it
-var order = AppMappings.Map(new OrderRequest(42, "rush"));
+var order = OrderMappings.Map(new OrderRequest(42, "rush"));            // a new Order
+var orders = OrderMappings.Map(new List<OrderRequest> { new(1, "a"), new(2, "b") });
+OrderMappings.Map(new OrderRequest(42, "gift wrap"), order);            // update in place, 0 B
 
-// 1. Define source and destination
+Console.WriteLine($"{order.Id}: {order.Notes}, {orders.Count} mapped");
+
 public sealed record OrderRequest(int Id, string Notes);
-public sealed record Order(int Id, string Notes);
 
-// 2. Declare the mapper — generator fills in the partial
-[Map<OrderRequest, Order>]
-public static partial class AppMappings { }
-```
-
-What the generator emits is a null check and a single direct constructor call — no intermediate buffer, no boxing, no closure:
-
-```csharp
-public static Order Map(OrderRequest src)
+public sealed class Order
 {
-    global::System.ArgumentNullException.ThrowIfNull(src);
-    var __dst = new Order(
-        Id: src.Id,
-        Notes: src.Notes
-    );
-    return __dst;
+    public int Id { get; set; }
+    public string Notes { get; set; } = "";
+}
+
+[Map<OrderRequest, Order>]
+public static partial class OrderMappings
+{
+    public static partial void Map(OrderRequest src, Order existingDst);
 }
 ```
 
+One attribute gives you the single-object mapper and the `List<T>`, `T[]`, `IEnumerable<T>` and `IReadOnlyList<T>` overloads. Declaring the partial `void Map(src, existing)` adds the update-in-place form. Each generated method is a null check and a direct constructor call or property writes.
+
+## What you get
+
+- **Constructor and property mapping** with conversions, renames and per-property customisation.
+- **Fallible mapping**: `[TryMap<,>]` returns `Result<T, MappingError>` instead of throwing, and a throwing smart constructor from [ZeroAlloc.ValueObjects](https://github.com/ZeroAlloc-Net/ZeroAlloc.ValueObjects) comes back as a failed result.
+- **Flattening**: map `Customer.Address.City` onto `City` with `[MapProperty]`.
+- **Reverse mapping**: one `[ReverseMap<,>]` declaration gives you both directions.
+- **Polymorphic dispatch**: a compile-time type switch over derived types.
+- **Update in place** for EF Core tracked entities and pooled objects.
+- **Collection overloads** generated automatically, with an opt-out.
+- **Before and after hooks**, which cost nothing when empty.
+- **Culture-aware parsing** and strict or case-insensitive matching per mapper.
+- **IQueryable projection** for EF Core, **cycle-safe mapping** for graphs with back-references, and **deep clone**.
+- **Integration**: [ZeroAlloc.Results](https://github.com/ZeroAlloc-Net/ZeroAlloc.Results) powers the `Result<T, MappingError>` path.
+
 ## Performance
 
-ZeroAlloc.Mapping matches Mapperly (the other source-generator mapper) on hot paths and is **1.8–14× faster than AutoMapper on single-object mappings** with allocation parity. On the 1000-item collection benchmark AutoMapper is faster but allocates 11% more. Benchmarks below run on .NET 10.0.7, i9-12900HK, BenchmarkDotNet v0.15.8.
+.NET 10, BenchmarkDotNet, same run. The last column is AutoMapper's time divided by ZeroAlloc.Mapping's.
 
-| Scenario | ZeroAlloc | Mapperly | AutoMapper | HandWritten |
-|---|---:|---:|---:|---:|
-| FlatIdentity (record copy) | 30.8 ns | 26.3 ns | 76.4 ns | 32.4 ns |
-| FlatConversion (string→int) | 185.8 ns | 201.9 ns | 327.2 ns | 167.9 ns |
-| Flattening (`a.b.c → d`) | 22.9 ns | 23.0 ns | 70.8 ns | 29.2 ns |
-| Polymorphic dispatch | 11.4 ns | 11.0 ns | 48.8 ns | 11.3 ns |
-| UpdateInPlace | 6.1 ns | 6.0 ns | **83.9 ns (~14× slower)** | 4.7 ns |
-| TryMap (Result<T,Error>) | 208.4 ns | 195.4 ns (no native) | — | 222.6 ns |
-| Collection (1000 items) | 38.6 µs | 41.1 µs | 30.4 µs | 39.6 µs |
+| Scenario | ZeroAlloc.Mapping | AutoMapper | AutoMapper time |
+|---|---:|---:|---:|
+| Update in place | 0 B | 0 B | 13.8× slower |
+| Polymorphic dispatch | 32 B | 32 B | 4.3× slower |
+| 1,000-item collection | 78.18 KB | 86.52 KB | 0.79×, AutoMapper is faster |
 
-Allocation: identical across mappers except `Collection` where AutoMapper allocates 11% more (86.5 KB vs 78.2 KB).
+Mapperly, the other source-generated mapper, allocates within 0.1 KB of ZeroAlloc.Mapping in every scenario and runs at 0.85× to 1.09× its time. The [performance page](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/blob/main/docs/performance.md) has all seven scenarios, the hand-written baseline, the per-call allocation budgets CI enforces, and how to reproduce the numbers.
 
-See [docs/performance.md](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/blob/main/docs/performance.md) for the full BenchmarkDotNet output, methodology, and the enforced per-call allocation budgets (CI fails on regression).
+## Learn more
 
-## Features
-
-- **`[Map<TSrc, TDst>]`** — direct property/constructor mapping with case-sensitive matching and compile-time diagnostics on mismatch
-- **`[TryMap<TSrc, TDst>]`** — fallible mapping returning `Result<TDst, MappingError>` (integrates with [ZeroAlloc.Results](https://github.com/ZeroAlloc-Net/ZeroAlloc.Results) smart constructors)
-- **`[MapProperty]` flattening** — `"Customer.Address.City" → City` via dotted paths
-- **`[BeforeMap]` / `[AfterMap]` hooks** — zero overhead when bodies are empty
-- **`[PolymorphicMap]`** — type-switch dispatch generated at compile time
-- **`[ReverseMap]`** — symmetric Domain↔DTO with a single declaration
-- **Update-in-place** — declare `static partial void Map(TSrc src, TDst existingDst)` next to `[Map<,>]` and the generator writes into the existing instance; the whole call allocates nothing, enforced by an `AllocationGate` test
-- **Collection overloads** — `List<T>`, `T[]`, `IEnumerable<T>`, `IReadOnlyList<T>` auto-emitted (opt-out via `[SkipCollectionOverloads]`)
-- **`[MappingCulture]`** — culture-aware `decimal.Parse` / `DateTime.Parse` per-mapper
-- **ValueObjects integration** — a smart constructor that throws comes back from `TryMap` as a failed `Result` whose `MappingError.Code` is `"mapping.constructor.threw"`
-- **Native AOT** — no reflection, no `MakeGenericType`, no expression compilation; trim/AOT warnings treated as errors in the AOT smoke gate
-
-## Documentation
-
-| Page | Description |
-|------|-------------|
-| [Getting Started](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/blob/main/docs/getting-started.md) | Install + first mapper in five minutes |
-| [Basic Mapping](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/blob/main/docs/basic-mapping.md) | Property matching, conversions, customisation |
-| [Flattening](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/blob/main/docs/flattening.md) | Dotted source paths via `[MapProperty]` |
-| [Collections](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/blob/main/docs/collections.md) | Auto-emitted overloads + nested elements |
-| [Polymorphic](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/blob/main/docs/polymorphic.md) | Type-switch dispatch |
-| [Reverse Mapping](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/blob/main/docs/reverse-mapping.md) | Symmetric Domain↔DTO |
-| [Update In Place](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/blob/main/docs/update-in-place.md) | Allocation-free destination reuse |
-| [Hooks](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/blob/main/docs/hooks.md) | `[BeforeMap]` / `[AfterMap]` |
-| [Culture & Strict](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/blob/main/docs/culture-and-strict.md) | `[MappingCulture]` and strict mode |
-| [Performance](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/blob/main/docs/performance.md) | Benchmarks, allocation budgets, AOT |
-| [Diagnostics](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/blob/main/docs/diagnostics.md) | All ZAMP* diagnostic IDs |
-| [Testing](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/blob/main/docs/testing.md) | How to unit-test generated mappers |
-| [Advanced](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/blob/main/docs/advanced.md) | Edge cases, generator internals |
-| [IQueryable Projection](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/blob/main/docs/iqueryable-projection.md) | `[Map<,>(Projection = true)]` — EF Core expression trees |
-| [Cycle-Safe Mapping](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/blob/main/docs/cycle-safe-mapping.md) | `[Map<,>(CycleSafe = true)]` — graphs with back-references |
-| [Deep Clone](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/blob/main/docs/deep-clone.md) | `[Map<,>(DeepClone = true)]` — whole-graph deep clone |
-
-## License
-
-MIT. See [LICENSE](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/blob/main/LICENSE).
+- [Documentation](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/blob/main/docs/README.md): guides, cookbook, the [diagnostics reference](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/blob/main/docs/diagnostics.md) and [testing generated mappers](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/blob/main/docs/testing.md).
+- Related packages: [ZeroAlloc.Results](https://github.com/ZeroAlloc-Net/ZeroAlloc.Results), [ZeroAlloc.ValueObjects](https://github.com/ZeroAlloc-Net/ZeroAlloc.ValueObjects), [ZeroAlloc.Validation](https://github.com/ZeroAlloc-Net/ZeroAlloc.Validation).
+- [Changelog](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/blob/main/CHANGELOG.md). Issues and pull requests are welcome on [GitHub](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/issues).
+- MIT licensed. See [LICENSE](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/blob/main/LICENSE).
