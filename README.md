@@ -12,7 +12,7 @@
 ## Why ZeroAlloc.Mapping
 
 - **Allocates what hand-written code allocates.** A flat record copy allocates 72 B, the same as `new Dst(...)` by hand. Update-in-place allocates 0 B, asserted by a test that fails CI on any regression.
-- **1.8× to 13.8× faster than AutoMapper** on single-object mappings, measured in the same BenchmarkDotNet run.
+- **1.3× to 6.9× faster than AutoMapper** on single-object mappings, measured in the same BenchmarkDotNet run.
 - **Works under NativeAOT and trimming.** The generated body is plain property reads and a constructor call. The AOT smoke test publishes with trim and AOT warnings treated as errors.
 - **Mistakes fail the build, not the request.** A destination property with no source is compile error ZAMP001, not a runtime exception on first use.
 
@@ -68,15 +68,15 @@ One attribute gives you the single-object mapper and the `List<T>`, `T[]`, `IEnu
 
 ## Performance
 
-.NET 10, BenchmarkDotNet, same run. The last column is AutoMapper's time divided by ZeroAlloc.Mapping's.
+.NET 10, BenchmarkDotNet, same run. Allocations are exact; the last column is AutoMapper's time divided by ZeroAlloc.Mapping's.
 
 | Scenario | ZeroAlloc.Mapping | AutoMapper | AutoMapper time |
 |---|---:|---:|---:|
-| Update in place | 0 B | 0 B | 13.8× slower |
-| Polymorphic dispatch | 32 B | 32 B | 4.3× slower |
-| 1,000-item collection | 78.18 KB | 86.52 KB | 0.79×, AutoMapper is faster |
+| Update in place | 0 B | 0 B | 6.9× slower |
+| Polymorphic dispatch | 32 B | 32 B | 5.7× slower |
+| 1,000-item collection | 78.18 KB | 86.52 KB | 1.5× slower |
 
-Mapperly, the other source-generated mapper, allocates within 0.1 KB of ZeroAlloc.Mapping in every scenario and runs at 0.85× to 1.09× its time. The [performance page](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/blob/main/docs/performance.md) has all seven scenarios, the hand-written baseline, the per-call allocation budgets CI enforces, and how to reproduce the numbers.
+Mapperly, the other source-generated mapper, allocates within 0.1 KB of ZeroAlloc.Mapping in every scenario and runs at 0.95× to 1.21× its time. The [performance page](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/blob/main/docs/performance.md) has all seven scenarios, the hand-written baseline, the per-call allocation budgets CI enforces, and how to reproduce the numbers.
 
 ## Learn more
 

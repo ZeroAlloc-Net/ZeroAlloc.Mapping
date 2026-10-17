@@ -8,6 +8,14 @@
   benchmarks/ZeroAlloc.Mapping.Benchmarks/BenchmarkDotNet.Artifacts/results/
   and concatenates them into a single block, sandwiched between the
   <!-- BENCH:START --> and <!-- BENCH:END --> sentinels in performance.md.
+
+  Only the Method, Ratio and Allocated columns are kept: the org publishes exact
+  allocations and same-run ratios, never absolute timings, because timings drift
+  between runs and machines while a ratio measured side by side holds.
+
+  It stops instead of writing when a row reports no allocation although Gen0
+  collections happened during it. BenchmarkDotNet has reported such false zeros
+  for these benchmarks; check the row with a per-thread measurement first.
 #>
 
 $ErrorActionPreference = 'Stop'
@@ -38,15 +46,49 @@ if ($reports.Count -eq 0) {
     throw "No -report-github.md files found in $resultsDir."
 }
 
+function Split-Row {
+    param([string]$line)
+    return @($line.Trim().Trim('|').Split('|') | ForEach-Object { $_.Trim() })
+}
+
+$keep = @('Method', 'Ratio', 'Allocated')
+$suspect = @()
+$environment = $null
+
 $blocks = foreach ($r in $reports) {
     $title = Get-ScenarioName $r.BaseName
-    $body = Get-Content $r.FullName -Raw
-    "### $title`n`n$body`n"
+    $lines = Get-Content $r.FullName
+    if (-not $environment) {
+        $fence = @($lines | Select-String -Pattern '^```' | ForEach-Object { $_.LineNumber })
+        if ($fence.Count -ge 2) { $environment = ($lines[($fence[0] - 1)..($fence[1] - 1)] -join "`n") }
+    }
+
+    $table = @($lines | Where-Object { $_.StartsWith('|') })
+    $header = Split-Row $table[0]
+    $indexes = @($keep | ForEach-Object { [array]::IndexOf($header, $_) } | Where-Object { $_ -ge 0 })
+    $gen0 = [array]::IndexOf($header, 'Gen0')
+    $alloc = [array]::IndexOf($header, 'Allocated')
+
+    $out = @('| ' + (($indexes | ForEach-Object { $header[$_] }) -join ' | ') + ' |')
+    $out += '|' + (($indexes | ForEach-Object { if ($header[$_] -eq 'Method') { '---' } else { '---:' } }) -join '|') + '|'
+    foreach ($row in $table[2..($table.Count - 1)]) {
+        $cells = Split-Row $row
+        if ($gen0 -ge 0 -and $alloc -ge 0 -and $cells[$gen0] -notin @('-', '0', '0.0000', '') -and $cells[$alloc] -in @('-', '0 B')) {
+            $suspect += "$title $($cells[0])"
+        }
+        $out += '| ' + (($indexes | ForEach-Object { $cells[$_] }) -join ' | ') + ' |'
+    }
+    "### $title`n`n$($out -join "`n")`n"
+}
+
+if ($suspect.Count -gt 0) {
+    throw "Rows report no allocation although Gen0 collections happened: $($suspect -join ', '). Measure them per thread before publishing."
 }
 
 $content = $blocks -join "`n"
 $timestamp = (Get-Date).ToString('yyyy-MM-dd')
-$wrapped = "<!-- BENCH:START -->`n_Last refreshed: ${timestamp}_`n`n$content`n<!-- BENCH:END -->"
+$note = '> Allocations are exact. Speed is shown as same-run ratios against the hand-written mapper; absolute timings are not published.'
+$wrapped = "<!-- BENCH:START -->`n_Last refreshed: ${timestamp}_`n`n$environment`n`n$note`n`n$content`n<!-- BENCH:END -->"
 
 $md = Get-Content $perfMd -Raw
 $pattern = '<!-- BENCH:START -->[\s\S]*?<!-- BENCH:END -->'
