@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.13](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/compare/v1.6.12...v1.6.13) (2026-10-17)
+
+
+### Tests
+
+* keep the allocation gate self-test objects on the heap ([#175](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/issues/175)) ([7127556](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/7127556763c9c3971a00966800e367fd71535eba))
+
 ## [1.6.12](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/compare/v1.6.11...v1.6.12) (2026-10-16)
 
 
