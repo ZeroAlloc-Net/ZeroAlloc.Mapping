@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.7.0](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/compare/v1.6.13...v1.7.0) (2026-11-11)
+
+
+### Features
+
+* add net11.0 target ([#197](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/issues/197)) ([e7ca1d7](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/e7ca1d7d328e758dd343003377cb3b9901b183f7))
+
+
+### Documentation
+
+* add context7.json to claim the library on Context7 ([#196](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/issues/196)) ([d47706a](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/d47706afc11b870a9baaeb69b9ca564cd2aa8af0))
+
 ## [1.6.13](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/compare/v1.6.12...v1.6.13) (2026-10-18)
 
 
