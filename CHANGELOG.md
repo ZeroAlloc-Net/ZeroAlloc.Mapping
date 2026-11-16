@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.7.1](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/compare/v1.7.0...v1.7.1) (2026-11-16)
+
+
+### Bug Fixes
+
+* embed PDBs so Go to Definition shows the package source ([#211](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/issues/211)) ([fd54a93](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/fd54a93b1ebbdd385f966af2af121bc7f1201723))
+
 ## [1.7.0](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/compare/v1.6.13...v1.7.0) (2026-11-11)
 
 
