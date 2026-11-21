@@ -66,3 +66,12 @@ Rule ID | Category          | Severity | Notes
 ZAMP022 | ZeroAlloc.Mapping | Warning  | Nested mapper inside a containing type that is not partial
 ZAMP023 | ZeroAlloc.Mapping | Warning  | Mapping cannot be generated for its source and destination types
 ZAMP024 | ZeroAlloc.Mapping | Error    | Mapper name differs only in case from another mapper
+
+## Release 2.0.0
+
+### Changed Rules
+
+Rule ID | New Category      | New Severity | Old Category      | Old Severity | Notes
+--------|-------------------|--------------|-------------------|--------------|-----------------------------------------------------------------
+ZAMP022 | ZeroAlloc.Mapping | Error        | ZeroAlloc.Mapping | Warning      | Nested mapper inside a containing type that is not partial
+ZAMP023 | ZeroAlloc.Mapping | Error        | ZeroAlloc.Mapping | Warning      | Mapping cannot be generated for its source and destination types
