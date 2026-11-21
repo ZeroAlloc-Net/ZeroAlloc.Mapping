@@ -36,8 +36,8 @@ The source-of-truth for descriptors is `src/ZeroAlloc.Mapping.Generator/Diagnost
 | ZAMP019 | Error | `[Map(DeepClone = true)]` reaches an uncloneable type |
 | ZAMP020 | Error | `[Map(DeepClone = true)]` walks a cyclic type graph without `CycleSafe = true` |
 | ZAMP021 | Error | `DeepClone + CycleSafe` reaches a primary-ctor-only type in a cycle |
-| ZAMP022 | Warning | Nested mapper inside a containing type that is not `partial` |
-| ZAMP023 | Warning | Mapping cannot be generated for its source and destination types |
+| ZAMP022 | Error | Nested mapper inside a containing type that is not `partial` |
+| ZAMP023 | Error | Mapping cannot be generated for its source and destination types |
 | ZAMP024 | Error | Mapper name differs only in case from another mapper |
 
 ## ZAMP001 — Required destination property has no source
@@ -565,11 +565,11 @@ public static partial class M { }
 
 ## ZAMP022 — Nested mapper inside a containing type that is not `partial`
 
-**Severity**: Warning.
+**Severity**: Error. Versions 1.6.8 to 1.7.x reported it as a warning, so a build with a mapper that does not exist could still pass.
 
 **Message**: `Mapper 'App.Outer.Mappers' is not generated because its containing type 'App.Outer' is not partial`.
 
-**Trigger**: A mapper nested in another type is emitted inside partial declarations of every containing type, so each of them must be `partial`. When one is not, the generator reports ZAMP022 on the mapper and generates nothing for it. The warning names the outermost containing type that is not `partial`.
+**Trigger**: A mapper nested in another type is emitted inside partial declarations of every containing type, so each of them must be `partial`. When one is not, the generator reports ZAMP022 on the mapper and generates nothing for it. The error names the outermost containing type that is not `partial`.
 
 The mapper's `Map` and `TryMap` methods then do not exist, so any call to them fails with CS0117. Earlier versions generated such a mapper into a new top-level class with its simple name, which left the nested mapper just as empty.
 
@@ -595,7 +595,7 @@ public partial class Outer
 
 ## ZAMP023 — Mapping cannot be generated
 
-**Severity**: Warning.
+**Severity**: Error. Versions 1.6.8 to 1.7.x reported it as a warning, so a build with a mapping method that does not exist could still pass.
 
 **Message**: `The mapping from 'App.A' to 'App.IB' is not generated because 'App.IB' has no public constructor`.
 
