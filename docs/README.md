@@ -8,7 +8,7 @@ sidebar_position: 0
 
 # ZeroAlloc.Mapping Documentation
 
-Source-generated, zero-allocation, AOT-safe Command→Domain→DTO mapper for .NET 8/9/10.
+Source-generated, zero-allocation, AOT-safe Command→Domain→DTO mapper for .NET 10 and .NET 11.
 
 ## Reference
 

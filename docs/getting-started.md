@@ -8,7 +8,7 @@ sidebar_position: 1
 
 # Getting Started
 
-ZeroAlloc.Mapping is a Roslyn source-generator-driven object mapper for .NET 8, 9, and 10. It emits strongly-typed mapping methods at compile time, so the success path runs with zero heap allocation beyond the destination instance itself and is fully native-AOT compatible. Fallible mappings integrate with [`ZeroAlloc.Results`](https://github.com/Roozekrans/ZeroAlloc.Results) so smart-constructor failures surface as a structured `Result<T, MappingError>` instead of a thrown exception.
+ZeroAlloc.Mapping is a Roslyn source-generator-driven object mapper for .NET 10 and .NET 11. It emits strongly-typed mapping methods at compile time, so the success path runs with zero heap allocation beyond the destination instance itself and is fully native-AOT compatible. Fallible mappings integrate with [`ZeroAlloc.Results`](https://github.com/Roozekrans/ZeroAlloc.Results) so smart-constructor failures surface as a structured `Result<T, MappingError>` instead of a thrown exception.
 
 ## Installation
 
