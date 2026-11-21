@@ -179,7 +179,7 @@ public class NestedHostTests
 
         var zamp022 = Assert.Single(diagnostics);
         Assert.Equal("ZAMP022", zamp022.Id);
-        Assert.Equal(DiagnosticSeverity.Warning, zamp022.Severity);
+        Assert.Equal(DiagnosticSeverity.Error, zamp022.Severity);
         Assert.Equal(
             "Mapper 'App.Outer.Mappers' is not generated because its containing type 'App.Outer' is not partial",
             zamp022.GetMessage(System.Globalization.CultureInfo.InvariantCulture));
@@ -212,6 +212,7 @@ public class NestedHostTests
         var zamp022 = Assert.Single(TestHarness.RunDiagnostics(source));
 
         Assert.Equal("ZAMP022", zamp022.Id);
+        Assert.Equal(DiagnosticSeverity.Error, zamp022.Severity);
         Assert.Contains(
             "containing type 'App.Outer' is not partial",
             zamp022.GetMessage(System.Globalization.CultureInfo.InvariantCulture),

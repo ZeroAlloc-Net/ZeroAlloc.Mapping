@@ -177,7 +177,7 @@ public class TypeShapeTests
 
         var zamp023 = Assert.Single(TestHarness.RunDiagnostics(source), d => d.Id == "ZAMP023");
 
-        Assert.Equal(DiagnosticSeverity.Warning, zamp023.Severity);
+        Assert.Equal(DiagnosticSeverity.Error, zamp023.Severity);
         Assert.Equal(
             "The mapping from 'App.A' to 'App.IB' is not generated because 'App.IB' has no public constructor",
             zamp023.GetMessage(System.Globalization.CultureInfo.InvariantCulture));
@@ -205,6 +205,7 @@ public class TypeShapeTests
         var run = TestHarness.RunGeneratorAndCompile(source);
 
         var zamp023 = Assert.Single(run.GeneratorDiagnostics, d => d.Id == "ZAMP023");
+        Assert.Equal(DiagnosticSeverity.Error, zamp023.Severity);
         Assert.Contains(
             named + " is not a class, struct, record or interface",
             zamp023.GetMessage(System.Globalization.CultureInfo.InvariantCulture),

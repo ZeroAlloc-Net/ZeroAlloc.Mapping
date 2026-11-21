@@ -8,7 +8,7 @@ property assignments at compile time: no reflection, NativeAOT-safe. One NuGet p
 ## Layout
 
 - `src/ZeroAlloc.Mapping` is the runtime package: attributes and `MappingError`. It multi-targets
-  `net8.0;net9.0;net10.0;net11.0`.
+  `net10.0;net11.0`.
 - `src/ZeroAlloc.Mapping.Generator` is the incremental generator, `netstandard2.0`, `IsPackable=false`. It is
   not published on its own: the runtime csproj packs its DLL into `analyzers/dotnet/cs`. Generator code must
   stay within the netstandard2.0 API and the extended analyzer rules (`EnforceExtendedAnalyzerRules`).
@@ -23,7 +23,7 @@ property assignments at compile time: no reflection, NativeAOT-safe. One NuGet p
 ## Build and test
 
 Prerequisites: `global.json` pins SDK 11.0.100 (`rollForward: latestMinor`), so an SDK 11 is required.
-The runtime package targets net8.0 to net11.0 and the test projects target `net10.0;net11.0`, so `dotnet test`
+The runtime package and the test projects target `net10.0;net11.0`, so `dotnet test`
 needs the .NET 10 and .NET 11 runtimes. The AOT job also needs `clang` and `zlib1g-dev`.
 
 CI job `build` in `.github/workflows/ci.yml`:

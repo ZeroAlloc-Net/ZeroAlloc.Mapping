@@ -42,6 +42,7 @@ public class BuiltInTypeMappingTests
 
         var zamp023 = Assert.Single(run.GeneratorDiagnostics);
         Assert.Equal("ZAMP023", zamp023.Id);
+        Assert.Equal(DiagnosticSeverity.Error, zamp023.Severity);
         Assert.Equal(
             $"The mapping from '{from}' to '{to}' is not generated because both are built-in types, and a conversion between them is a cast, not a mapping",
             zamp023.GetMessage(System.Globalization.CultureInfo.InvariantCulture));
