@@ -1,5 +1,22 @@
 # Changelog
 
+## [2.0.0](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/compare/v1.7.1...v2.0.0) (2026-11-21)
+
+
+### ⚠ BREAKING CHANGES
+
+* ZeroAlloc.Mapping no longer ships net8.0 and net9.0 assets; ZAMP022 and ZAMP023 are now errors instead of warnings. See the Behaviour change section of the release for the migration steps.
+
+### Features
+
+* target net10.0 and net11.0, drop net8.0 and net9.0 ([0cb9723](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/0cb9723683ed96eb176d4ac91399dc170e59cfca))
+
+
+### Bug Fixes
+
+* report ZAMP022 as an error when a nested mapper's containing type is not partial ([0cb9723](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/0cb9723683ed96eb176d4ac91399dc170e59cfca))
+* report ZAMP023 as an error when a mapping cannot be generated ([0cb9723](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/commit/0cb9723683ed96eb176d4ac91399dc170e59cfca))
+
 ## [1.7.1](https://github.com/ZeroAlloc-Net/ZeroAlloc.Mapping/compare/v1.7.0...v1.7.1) (2026-11-16)
 
 
