@@ -16,6 +16,8 @@ ZeroAlloc.Mapping is a Roslyn source-generator-driven object mapper for .NET 10 
 dotnet add package ZeroAlloc.Mapping
 ```
 
+The generator needs the .NET 10 SDK 10.0.100 or later, or Visual Studio 2026 or later. It is built against Roslyn 5.0, and an older compiler skips it with warning CS9057, after which the generated mapping methods are missing. Version 2.0.0 was built against Roslyn 5.12 and loads only in the .NET 11 SDK; on .NET 10, use 2.0.1 or later.
+
 The generator runs automatically as part of `dotnet build`. There is no DI registration, no startup wire-up, and no runtime reflection — every dispatch you call was emitted into your assembly during compilation.
 
 ## Your First Mapping
